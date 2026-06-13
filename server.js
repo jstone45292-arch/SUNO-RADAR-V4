@@ -170,17 +170,6 @@ app.get("/scan", async (req, res) => {
   }
 });
 
-cron.schedule("*/10 * * * *", async () => {
-  console.log("auto scan start");
-  await scanOnce();
-});
-
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-  console.log(`Server running on ${PORT}`);
-});
-
 app.get("/add-friend", async (req, res) => {
 
   const {
@@ -215,4 +204,39 @@ app.get("/add-friend", async (req, res) => {
     friend:data
   });
 
+});
+
+app.get("/delete-friend/:id", async (req, res) => {
+
+  const id = req.params.id;
+
+  const { data, error } = await supabase
+    .from("friends")
+    .delete()
+    .eq("id", id)
+    .select();
+
+  if(error){
+    return res.status(500).json({
+      ok:false,
+      error:error.message
+    });
+  }
+
+  res.json({
+    ok:true,
+    deleted:data
+  });
+
+});
+
+cron.schedule("*/10 * * * *", async () => {
+  console.log("auto scan start");
+  await scanOnce();
+});
+
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, () => {
+  console.log(`Server running on ${PORT}`);
 });
