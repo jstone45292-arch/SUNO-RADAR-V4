@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>SUNO Radar V4</title>
+</head>
+<body>
+
+<h1>🎵 SUNO Radar V4</h1>
+
+<div id="tracks"></div>
+
+<script>
+fetch("/tracks")
+.then(r=>r.json())
+.then(data=>{
+
+const html = data.map(track => `
+<div style="border:1px solid #ccc;padding:10px;margin:10px;">
+<h3>${track.title}</h3>
+<p>${track.friend_name}</p>
+<a href="${track.track_url}" target="_blank">
+듣기
+</a>
+</div>
+`).join("");
+
+document.getElementById("tracks").innerHTML = html;
+
+});
+</script>
+
+</body>
+</html>
