@@ -36,16 +36,12 @@ async function getSongTitle(songUrl) {
 
 async function cleanupTracks() {
   const now = new Date();
-
   const readLimit = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString();
   const archiveLimit = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
   const { error: archiveError } = await supabase
     .from("tracks")
-    .update({
-      state: "ARCHIVED",
-      archived_at: now.toISOString()
-    })
+    .update({ state: "ARCHIVED", archived_at: now.toISOString() })
     .eq("state", "READ")
     .lt("read_at", readLimit);
 
@@ -140,20 +136,74 @@ app.get("/tracks", async (req, res) => {
 });
 
 app.get("/mark-read/:id", async (req, res) => {
-  const id = req.params.id;
-
   const { data, error } = await supabase
     .from("tracks")
     .update({
       state: "READ",
       read_at: new Date().toISOString()
     })
-    .eq("id", id)
+    .eq("id", req.params.id)
+    .select();
+
+  if (error) return res.status(500).json({ ok: false, error: error.message });
+  res.json({ ok: true, data });
+});
+
+app.get("/add-friend", async (req, res) => {
+  const { friend_name, profile_url, group_name } = req.query;
+
+  if (!friend_name || !profile_url) {
+    return res.status(400).json({
+      ok: false,
+      error: "friend_name/profile_url required"
+    });
+  }
+
+  const { data, error } = await supabase
+    .from("friends")
+    .insert({
+      friend_name,
+      profile_url,
+      group_name: group_name || "한국",
+      active: true
+    })
     .select();
 
   if (error) return res.status(500).json({ ok: false, error: error.message });
 
-  res.json({ ok: true, data });
+  res.json({ ok: true, friend: data });
+});
+
+app.get("/delete-friend/:id", async (req, res) => {
+  const { data, error } = await supabase
+    .from("friends")
+    .delete()
+    .eq("id", req.params.id)
+    .select();
+
+  if (error) return res.status(500).json({ ok: false, error: error.message });
+
+  res.json({ ok: true, deleted: data });
+});
+
+app.get("/toggle-friend/:id", async (req, res) => {
+  const { data: current, error: readError } = await supabase
+    .from("friends")
+    .select("active")
+    .eq("id", req.params.id)
+    .single();
+
+  if (readError) return res.status(500).json({ ok: false, error: readError.message });
+
+  const { data, error } = await supabase
+    .from("friends")
+    .update({ active: !current.active })
+    .eq("id", req.params.id)
+    .select();
+
+  if (error) return res.status(500).json({ ok: false, error: error.message });
+
+  res.json({ ok: true, friend: data });
 });
 
 app.get("/cleanup", async (req, res) => {
@@ -168,66 +218,6 @@ app.get("/scan", async (req, res) => {
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
-});
-
-app.get("/add-friend", async (req, res) => {
-
-  const {
-    friend_name,
-    profile_url,
-    group_name
-  } = req.query;
-
-  if (!friend_name || !profile_url) {
-    return res.status(400).json({
-      ok:false,
-      error:"friend_name/profile_url required"
-    });
-  }
-
-  const { data, error } = await supabase
-    .from("friends")
-    .insert({
-      friend_name,
-      profile_url,
-      group_name: group_name || "한국",
-      active: true
-    })
-    .select();
-
-  if(error){
-    return res.status(500).json(error);
-  }
-
-  res.json({
-    ok:true,
-    friend:data
-  });
-
-});
-
-app.get("/delete-friend/:id", async (req, res) => {
-
-  const id = req.params.id;
-
-  const { data, error } = await supabase
-    .from("friends")
-    .delete()
-    .eq("id", id)
-    .select();
-
-  if(error){
-    return res.status(500).json({
-      ok:false,
-      error:error.message
-    });
-  }
-
-  res.json({
-    ok:true,
-    deleted:data
-  });
-
 });
 
 cron.schedule("*/10 * * * *", async () => {
