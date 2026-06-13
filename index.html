@@ -1,33 +1,115 @@
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 <head>
-<meta charset="utf-8">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
 <title>SUNO Radar V4</title>
+
+<style>
+
+body{
+  margin:0;
+  background:#121212;
+  color:white;
+  font-family:Arial;
+}
+
+header{
+  padding:20px;
+  background:#1e1e1e;
+  font-size:32px;
+  font-weight:bold;
+}
+
+#tracks{
+  padding:20px;
+}
+
+.card{
+  background:#222;
+  border-radius:12px;
+  padding:15px;
+  margin-bottom:15px;
+}
+
+.title{
+  font-size:20px;
+  font-weight:bold;
+}
+
+.friend{
+  color:#aaa;
+  margin-top:5px;
+}
+
+.listen{
+  display:inline-block;
+  margin-top:10px;
+  padding:8px 15px;
+  background:#ff6b00;
+  color:white;
+  text-decoration:none;
+  border-radius:8px;
+}
+
+</style>
+
 </head>
+
 <body>
 
-<h1>🎵 SUNO Radar V4</h1>
+<header>
+🎵 SUNO Radar V4
+</header>
 
-<div id="tracks"></div>
+<div id="tracks">
+로딩중...
+</div>
 
 <script>
+
 fetch("/tracks")
 .then(r=>r.json())
 .then(data=>{
 
-const html = data.map(track => `
-<div style="border:1px solid #ccc;padding:10px;margin:10px;">
-<h3>${track.title}</h3>
-<p>${track.friend_name}</p>
-<a href="${track.track_url}" target="_blank">
+let html="";
+
+data.forEach(track=>{
+
+html += `
+
+<div class="card">
+
+<div class="title">
+${track.title}
+</div>
+
+<div class="friend">
+👤 ${track.friend_name}
+</div>
+
+<div>
+${track.group_name}
+</div>
+
+<a
+class="listen"
+target="_blank"
+href="${track.track_url}">
 듣기
 </a>
+
 </div>
-`).join("");
+
+`;
+
+});
 
 document.getElementById("tracks").innerHTML = html;
 
 });
+
 </script>
 
 </body>
