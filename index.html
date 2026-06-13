@@ -3,113 +3,94 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-
-<title>SUNO Radar V4</title>
-
+<title>SUNO Radar V4.1</title>
 <style>
-
-body{
-  margin:0;
-  background:#121212;
-  color:white;
-  font-family:Arial;
-}
-
-header{
-  padding:20px;
-  background:#1e1e1e;
-  font-size:32px;
-  font-weight:bold;
-}
-
-#tracks{
-  padding:20px;
-}
-
-.card{
-  background:#222;
-  border-radius:12px;
-  padding:15px;
-  margin-bottom:15px;
-}
-
-.title{
-  font-size:20px;
-  font-weight:bold;
-}
-
-.friend{
-  color:#aaa;
-  margin-top:5px;
-}
-
-.listen{
-  display:inline-block;
-  margin-top:10px;
-  padding:8px 15px;
-  background:#ff6b00;
-  color:white;
-  text-decoration:none;
-  border-radius:8px;
-}
-
+body{margin:0;background:#111;color:#fff;font-family:Arial}
+header{padding:22px;background:#1f1f1f;font-size:30px;font-weight:bold}
+.toolbar{padding:15px;background:#151515;display:flex;gap:10px;flex-wrap:wrap}
+button{padding:10px 16px;border:0;border-radius:8px;font-weight:bold;cursor:pointer}
+.btn{background:#333;color:white}
+.scan{background:#00b894;color:white}
+.active{background:#ff6b00;color:white}
+#count{padding:0 18px;color:#aaa}
+#tracks{padding:18px}
+.card{background:#242424;border-radius:14px;padding:16px;margin-bottom:14px}
+.title{font-size:20px;font-weight:bold;margin-bottom:8px}
+.badge{background:#ff3333;color:white;padding:3px 7px;border-radius:6px;font-size:12px;margin-right:6px}
+.friend a{color:#b9a7ff;text-decoration:none}
+.meta{color:#aaa;margin-top:5px}
+.listen{display:inline-block;margin-top:12px;padding:9px 18px;background:#ff6b00;color:white;text-decoration:none;border-radius:8px;font-weight:bold}
 </style>
-
 </head>
-
 <body>
 
-<header>
-🎵 SUNO Radar V4
-</header>
+<header>🎵 SUNO Radar V4.1</header>
 
-<div id="tracks">
-로딩중...
+<div class="toolbar">
+<button class="btn active" onclick="setFilter('ALL',this)">전체</button>
+<button class="btn" onclick="setFilter('한국',this)">한국</button>
+<button class="btn" onclick="setFilter('해외',this)">해외</button>
+<button class="btn" onclick="loadTracks()">새로고침</button>
+<button class="scan" onclick="runScan()">수집 실행</button>
 </div>
+
+<div id="count">로딩중...</div>
+<div id="tracks"></div>
 
 <script>
+let allTracks=[];
+let currentFilter="ALL";
 
-fetch("/tracks")
-.then(r=>r.json())
-.then(data=>{
+function timeAgo(dateText){
+ const d=new Date(dateText);
+ const diff=(Date.now()-d.getTime())/1000;
+ if(diff<60) return "방금 전";
+ if(diff<3600) return Math.floor(diff/60)+"분 전";
+ if(diff<86400) return Math.floor(diff/3600)+"시간 전";
+ return Math.floor(diff/86400)+"일 전";
+}
 
-let html="";
+function setFilter(group,btn){
+ currentFilter=group;
+ document.querySelectorAll(".toolbar .btn").forEach(b=>b.classList.remove("active"));
+ btn.classList.add("active");
+ render();
+}
 
-data.forEach(track=>{
+async function loadTracks(){
+ document.getElementById("count").innerText="로딩중...";
+ const res=await fetch("/tracks");
+ allTracks=await res.json();
+ render();
+}
 
-html += `
+function render(){
+ let data=allTracks;
+ if(currentFilter!=="ALL"){
+   data=data.filter(t=>t.group_name===currentFilter);
+ }
 
-<div class="card">
+ document.getElementById("count").innerText=`표시 ${data.length}곡 / 전체 ${allTracks.length}곡`;
 
-<div class="title">
-${track.title}
-</div>
+ document.getElementById("tracks").innerHTML=data.map(t=>`
+ <div class="card">
+   <div class="title"><span class="badge">NEW</span>${t.title || "Suno song"}</div>
+   <div class="friend">👤 <a href="${t.profile_url}" target="_blank">${t.friend_name}</a></div>
+   <div class="meta">🌐 ${t.group_name || "-"} · 🕒 ${timeAgo(t.created_at || t.detected_at)}</div>
+   <a class="listen" href="${t.track_url}" target="_blank">듣기</a>
+ </div>
+ `).join("");
+}
 
-<div class="friend">
-👤 ${track.friend_name}
-</div>
+async function runScan(){
+ document.getElementById("count").innerText="수집 실행중...";
+ const res=await fetch("/scan");
+ const result=await res.json();
+ alert(`수집 완료\n친구: ${result.friends}명\n신규 저장: ${result.inserted}곡`);
+ await loadTracks();
+}
 
-<div>
-${track.group_name}
-</div>
-
-<a
-class="listen"
-target="_blank"
-href="${track.track_url}">
-듣기
-</a>
-
-</div>
-
-`;
-
-});
-
-document.getElementById("tracks").innerHTML = html;
-
-});
-
+loadTracks();
 </script>
 
 </body>
