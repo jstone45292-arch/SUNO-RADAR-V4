@@ -6,6 +6,7 @@ const { createClient } = require("@supabase/supabase-js");
 const app = express();
 
 app.use(express.static("."));
+app.use(express.json());
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -33,7 +34,37 @@ async function getSongTitle(songUrl) {
   return "Suno song";
 }
 
+async function cleanupTracks() {
+  const now = new Date();
+
+  const readLimit = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString();
+  const archiveLimit = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+  const { error: archiveError } = await supabase
+    .from("tracks")
+    .update({
+      state: "ARCHIVED",
+      archived_at: now.toISOString()
+    })
+    .eq("state", "READ")
+    .lt("read_at", readLimit);
+
+  const { error: deleteError } = await supabase
+    .from("tracks")
+    .delete()
+    .eq("state", "ARCHIVED")
+    .lt("archived_at", archiveLimit);
+
+  return {
+    ok: !archiveError && !deleteError,
+    archiveError: archiveError ? archiveError.message : null,
+    deleteError: deleteError ? deleteError.message : null
+  };
+}
+
 async function scanOnce() {
+  await cleanupTracks();
+
   const { data: friends, error } = await supabase
     .from("friends")
     .select("*")
@@ -83,19 +114,51 @@ app.get("/", (req, res) => {
 });
 
 app.get("/friends", async (req, res) => {
-  const { data, error } = await supabase.from("friends").select("*");
+  const { data, error } = await supabase
+    .from("friends")
+    .select("*")
+    .order("id", { ascending: true });
+
   if (error) return res.status(500).json(error);
   res.json(data);
 });
 
 app.get("/tracks", async (req, res) => {
-  const { data, error } = await supabase
+  let query = supabase
     .from("tracks")
     .select("*")
     .order("created_at", { ascending: false });
 
+  if (req.query.state) {
+    query = query.eq("state", req.query.state);
+  }
+
+  const { data, error } = await query;
+
   if (error) return res.status(500).json(error);
   res.json(data);
+});
+
+app.get("/mark-read/:id", async (req, res) => {
+  const id = req.params.id;
+
+  const { data, error } = await supabase
+    .from("tracks")
+    .update({
+      state: "READ",
+      read_at: new Date().toISOString()
+    })
+    .eq("id", id)
+    .select();
+
+  if (error) return res.status(500).json({ ok: false, error: error.message });
+
+  res.json({ ok: true, data });
+});
+
+app.get("/cleanup", async (req, res) => {
+  const result = await cleanupTracks();
+  res.json(result);
 });
 
 app.get("/scan", async (req, res) => {
@@ -107,7 +170,7 @@ app.get("/scan", async (req, res) => {
   }
 });
 
-cron.schedule("0 * * * *", async () => {
+cron.schedule("*/10 * * * *", async () => {
   console.log("auto scan start");
   await scanOnce();
 });
