@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SUNO Radar V4.1</title>
+<title>SUNO Radar V4.2</title>
+
 <style>
 body{margin:0;background:#111;color:#fff;font-family:Arial}
 header{padding:22px;background:#1f1f1f;font-size:30px;font-weight:bold}
@@ -12,24 +13,32 @@ button{padding:10px 16px;border:0;border-radius:8px;font-weight:bold;cursor:poin
 .btn{background:#333;color:white}
 .scan{background:#00b894;color:white}
 .active{background:#ff6b00;color:white}
-#count{padding:0 18px;color:#aaa}
+#count{padding:0 18px 12px;color:#aaa}
 #tracks{padding:18px}
 .card{background:#242424;border-radius:14px;padding:16px;margin-bottom:14px}
 .title{font-size:20px;font-weight:bold;margin-bottom:8px}
-.badge{background:#ff3333;color:white;padding:3px 7px;border-radius:6px;font-size:12px;margin-right:6px}
+.badge{padding:3px 7px;border-radius:6px;font-size:12px;margin-right:6px}
+.new{background:#ff3333;color:white}
+.read{background:#666;color:white}
+.archived{background:#555;color:#ddd}
 .friend a{color:#b9a7ff;text-decoration:none}
 .meta{color:#aaa;margin-top:5px}
 .listen{display:inline-block;margin-top:12px;padding:9px 18px;background:#ff6b00;color:white;text-decoration:none;border-radius:8px;font-weight:bold}
 </style>
 </head>
+
 <body>
 
-<header>🎵 SUNO Radar V4.1</header>
+<header>🎵 SUNO Radar V4.2</header>
 
 <div class="toolbar">
-<button class="btn active" onclick="setFilter('ALL',this)">전체</button>
-<button class="btn" onclick="setFilter('한국',this)">한국</button>
-<button class="btn" onclick="setFilter('해외',this)">해외</button>
+<button class="btn active" onclick="setState('NEW',this)">NEW</button>
+<button class="btn" onclick="setState('READ',this)">READ</button>
+<button class="btn" onclick="setState('ARCHIVED',this)">ARCHIVED</button>
+<button class="btn" onclick="setState('ALL',this)">전체</button>
+<button class="btn" onclick="setGroup('한국',this)">한국</button>
+<button class="btn" onclick="setGroup('해외',this)">해외</button>
+<button class="btn" onclick="clearGroup()">그룹해제</button>
 <button class="btn" onclick="loadTracks()">새로고침</button>
 <button class="scan" onclick="runScan()">수집 실행</button>
 </div>
@@ -39,9 +48,11 @@ button{padding:10px 16px;border:0;border-radius:8px;font-weight:bold;cursor:poin
 
 <script>
 let allTracks=[];
-let currentFilter="ALL";
+let currentState="NEW";
+let currentGroup="ALL";
 
 function timeAgo(dateText){
+ if(!dateText) return "-";
  const d=new Date(dateText);
  const diff=(Date.now()-d.getTime())/1000;
  if(diff<60) return "방금 전";
@@ -50,34 +61,73 @@ function timeAgo(dateText){
  return Math.floor(diff/86400)+"일 전";
 }
 
-function setFilter(group,btn){
- currentFilter=group;
+function setState(state,btn){
+ currentState=state;
  document.querySelectorAll(".toolbar .btn").forEach(b=>b.classList.remove("active"));
  btn.classList.add("active");
+ loadTracks();
+}
+
+function setGroup(group,btn){
+ currentGroup=group;
+ render();
+}
+
+function clearGroup(){
+ currentGroup="ALL";
  render();
 }
 
 async function loadTracks(){
  document.getElementById("count").innerText="로딩중...";
- const res=await fetch("/tracks");
+ let url="/tracks";
+ if(currentState!=="ALL") url += "?state=" + currentState;
+ const res=await fetch(url);
  allTracks=await res.json();
  render();
 }
 
+function badgeClass(state){
+ if(state==="NEW") return "new";
+ if(state==="READ") return "read";
+ if(state==="ARCHIVED") return "archived";
+ return "read";
+}
+
+async function listenTrack(id,url){
+ await fetch("/mark-read/" + id);
+ window.open(url,"_blank");
+ await loadTracks();
+}
+
 function render(){
  let data=allTracks;
- if(currentFilter!=="ALL"){
-   data=data.filter(t=>t.group_name===currentFilter);
+
+ if(currentGroup!=="ALL"){
+   data=data.filter(t=>t.group_name===currentGroup);
  }
 
- document.getElementById("count").innerText=`표시 ${data.length}곡 / 전체 ${allTracks.length}곡`;
+ document.getElementById("count").innerText =
+ `상태 ${currentState} / 그룹 ${currentGroup} / 표시 ${data.length}곡`;
 
  document.getElementById("tracks").innerHTML=data.map(t=>`
  <div class="card">
-   <div class="title"><span class="badge">NEW</span>${t.title || "Suno song"}</div>
-   <div class="friend">👤 <a href="${t.profile_url}" target="_blank">${t.friend_name}</a></div>
-   <div class="meta">🌐 ${t.group_name || "-"} · 🕒 ${timeAgo(t.created_at || t.detected_at)}</div>
-   <a class="listen" href="${t.track_url}" target="_blank">듣기</a>
+   <div class="title">
+     <span class="badge ${badgeClass(t.state)}">${t.state || "NEW"}</span>
+     ${t.title || "Suno song"}
+   </div>
+
+   <div class="friend">
+     👤 <a href="${t.profile_url}" target="_blank">${t.friend_name}</a>
+   </div>
+
+   <div class="meta">
+     🌐 ${t.group_name || "-"} · 🕒 ${timeAgo(t.created_at || t.detected_at)}
+   </div>
+
+   <button class="listen" onclick="listenTrack(${t.id}, '${t.track_url}')">
+     듣기
+   </button>
  </div>
  `).join("");
 }
