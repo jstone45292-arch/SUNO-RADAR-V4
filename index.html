@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SUNO Radar V4.3</title>
+<title>SUNO Radar V5.0</title>
 
 <style>
 body{margin:0;background:#111;color:#fff;font-family:Arial}
@@ -27,9 +27,45 @@ input,select{padding:10px;border-radius:8px;border:1px solid #444;background:#22
 .meta{color:#aaa;margin-top:5px}
 .listen{display:inline-block;margin-top:12px;padding:9px 18px;background:#ff6b00;color:white;text-decoration:none;border-radius:8px;font-weight:bold}
 
-#friendPanel{display:none;padding:18px;background:#181818;border-top:1px solid #333}
+.stats{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(130px,1fr));
+gap:10px;
+padding:14px 18px;
+background:#151515;
+}
+.statBox{
+background:#242424;
+border-radius:12px;
+padding:14px;
+}
+.statNum{font-size:24px;font-weight:bold;color:#ffb86b}
+.statLabel{font-size:13px;color:#aaa;margin-top:4px}
+
+.searchBar{
+padding:12px 18px;
+background:#111;
+display:flex;
+gap:10px;
+flex-wrap:wrap;
+}
+
+#friendPanel,#latestPanel{
+display:none;
+padding:18px;
+background:#181818;
+border-top:1px solid #333;
+}
 .friendForm{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
-.friendRow{display:flex;justify-content:space-between;gap:8px;background:#242424;margin-bottom:8px;padding:12px;border-radius:10px}
+.friendRow,.latestRow{
+display:flex;
+justify-content:space-between;
+gap:8px;
+background:#242424;
+margin-bottom:8px;
+padding:12px;
+border-radius:10px;
+}
 .friendName{font-weight:bold}
 .small{font-size:13px;color:#aaa}
 .off{opacity:.45}
@@ -41,25 +77,39 @@ input,select{padding:10px;border-radius:8px;border:1px solid #444;background:#22
 
 <body>
 
-<header>🎵 SUNO Radar V4.3</header>
+<header>🎵 SUNO Radar V5.0</header>
+
+<div class="stats">
+<div class="statBox"><div class="statNum" id="statFriends">-</div><div class="statLabel">활성 친구</div></div>
+<div class="statBox"><div class="statNum" id="statNew">-</div><div class="statLabel">NEW</div></div>
+<div class="statBox"><div class="statNum" id="statRead">-</div><div class="statLabel">READ</div></div>
+<div class="statBox"><div class="statNum" id="statArchived">-</div><div class="statLabel">ARCHIVED</div></div>
+</div>
 
 <div class="toolbar">
 <button class="btn active" onclick="setState('NEW',this)">NEW</button>
 <button class="btn" onclick="setState('READ',this)">READ</button>
 <button class="btn" onclick="setState('ARCHIVED',this)">ARCHIVED</button>
 <button class="btn" onclick="setState('ALL',this)">전체</button>
-<button class="btn" onclick="setGroup('한국',this)">한국</button>
-<button class="btn" onclick="setGroup('해외',this)">해외</button>
+<button class="btn" onclick="setGroup('한국')">한국</button>
+<button class="btn" onclick="setGroup('해외')">해외</button>
 <button class="btn" onclick="clearGroup()">그룹해제</button>
 <button class="btn" onclick="loadTracks()">새로고침</button>
 <button class="scan" onclick="runScan()">수집 실행</button>
 <button class="manage" onclick="toggleFriendPanel()">친구관리</button>
+<button class="manage" onclick="toggleLatestPanel()">최근수집</button>
+<button class="btn" onclick="runCleanup()">정리실행</button>
+</div>
+
+<div class="searchBar">
+<input id="trackSearch" placeholder="곡 제목 / 친구명 검색" style="min-width:260px" oninput="render()">
 </div>
 
 <div id="friendPanel">
 <h2>친구관리</h2>
 
 <div class="friendForm">
+<input id="friendSearch" placeholder="친구 검색" oninput="loadFriends()" style="min-width:180px">
 <input id="newName" placeholder="친구 이름">
 <input id="newUrl" placeholder="https://suno.com/@아이디" style="min-width:260px">
 <select id="newGroup">
@@ -72,6 +122,11 @@ input,select{padding:10px;border-radius:8px;border:1px solid #444;background:#22
 
 <div id="friendCount" class="small">친구목록 로딩중...</div>
 <div id="friendList"></div>
+</div>
+
+<div id="latestPanel">
+<h2>최근수집 20곡</h2>
+<div id="latestList"></div>
 </div>
 
 <div id="count">로딩중...</div>
@@ -92,14 +147,23 @@ function timeAgo(dateText){
  return Math.floor(diff/86400)+"일 전";
 }
 
+async function loadStats(){
+ const res=await fetch("/stats");
+ const s=await res.json();
+ document.getElementById("statFriends").innerText=s.friends ?? 0;
+ document.getElementById("statNew").innerText=s.new ?? 0;
+ document.getElementById("statRead").innerText=s.read ?? 0;
+ document.getElementById("statArchived").innerText=s.archived ?? 0;
+}
+
 function setState(state,btn){
  currentState=state;
  document.querySelectorAll(".toolbar .btn").forEach(b=>b.classList.remove("active"));
- btn.classList.add("active");
+ if(btn) btn.classList.add("active");
  loadTracks();
 }
 
-function setGroup(group,btn){
+function setGroup(group){
  currentGroup=group;
  render();
 }
@@ -115,6 +179,7 @@ async function loadTracks(){
  if(currentState!=="ALL") url += "?state=" + currentState;
  const res=await fetch(url);
  allTracks=await res.json();
+ await loadStats();
  render();
 }
 
@@ -133,9 +198,17 @@ async function listenTrack(id,url){
 
 function render(){
  let data=allTracks;
+ const q=document.getElementById("trackSearch").value.trim().toLowerCase();
 
  if(currentGroup!=="ALL"){
    data=data.filter(t=>t.group_name===currentGroup);
+ }
+
+ if(q){
+   data=data.filter(t =>
+     (t.title || "").toLowerCase().includes(q) ||
+     (t.friend_name || "").toLowerCase().includes(q)
+   );
  }
 
  document.getElementById("count").innerText =
@@ -169,6 +242,14 @@ async function runScan(){
  const result=await res.json();
  alert(`수집 완료\n친구: ${result.friends}명\n신규 저장: ${result.inserted}곡`);
  await loadTracks();
+ await loadLatest();
+}
+
+async function runCleanup(){
+ const res=await fetch("/cleanup");
+ const result=await res.json();
+ alert("정리 완료: " + JSON.stringify(result));
+ await loadTracks();
 }
 
 function toggleFriendPanel(){
@@ -178,7 +259,9 @@ function toggleFriendPanel(){
 }
 
 async function loadFriends(){
- const res=await fetch("/friends");
+ const q=document.getElementById("friendSearch")?.value?.trim() || "";
+ const url=q ? "/friend-search?q=" + encodeURIComponent(q) : "/friends";
+ const res=await fetch(url);
  const friends=await res.json();
 
  document.getElementById("friendCount").innerText =
@@ -222,21 +305,48 @@ async function addFriend(){
  document.getElementById("newName").value="";
  document.getElementById("newUrl").value="";
  await loadFriends();
+ await loadStats();
  alert("친구 추가 완료");
 }
 
 async function toggleFriend(id){
  await fetch("/toggle-friend/" + id);
  await loadFriends();
+ await loadStats();
 }
 
 async function deleteFriend(id){
  if(!confirm("정말 삭제할까요?")) return;
  await fetch("/delete-friend/" + id);
  await loadFriends();
+ await loadStats();
+}
+
+function toggleLatestPanel(){
+ const panel=document.getElementById("latestPanel");
+ panel.style.display = panel.style.display==="block" ? "none" : "block";
+ if(panel.style.display==="block") loadLatest();
+}
+
+async function loadLatest(){
+ const res=await fetch("/latest");
+ const data=await res.json();
+
+ document.getElementById("latestList").innerHTML=data.map(t=>`
+ <div class="latestRow">
+   <div>
+     <div class="friendName">${t.title || "Suno song"}</div>
+     <div class="small">${t.friend_name} · ${timeAgo(t.detected_at || t.created_at)}</div>
+   </div>
+   <div>
+     <a class="listen" href="${t.track_url}" target="_blank">듣기</a>
+   </div>
+ </div>
+ `).join("");
 }
 
 loadTracks();
+loadStats();
 </script>
 
 </body>
