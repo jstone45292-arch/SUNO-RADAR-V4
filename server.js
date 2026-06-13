@@ -180,3 +180,39 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on ${PORT}`);
 });
+
+app.get("/add-friend", async (req, res) => {
+
+  const {
+    friend_name,
+    profile_url,
+    group_name
+  } = req.query;
+
+  if (!friend_name || !profile_url) {
+    return res.status(400).json({
+      ok:false,
+      error:"friend_name/profile_url required"
+    });
+  }
+
+  const { data, error } = await supabase
+    .from("friends")
+    .insert({
+      friend_name,
+      profile_url,
+      group_name: group_name || "한국",
+      active: true
+    })
+    .select();
+
+  if(error){
+    return res.status(500).json(error);
+  }
+
+  res.json({
+    ok:true,
+    friend:data
+  });
+
+});
