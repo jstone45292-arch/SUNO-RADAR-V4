@@ -1,3 +1,4 @@
+app.use(express.static("."));
 const express = require("express");
 const axios = require("axios");
 const cron = require("node-cron");
