@@ -119,6 +119,19 @@ app.get("/friends", async (req, res) => {
   res.json(data);
 });
 
+app.get("/friend-search", async (req, res) => {
+  const keyword = req.query.q || "";
+
+  const { data, error } = await supabase
+    .from("friends")
+    .select("*")
+    .ilike("friend_name", `%${keyword}%`)
+    .order("friend_name");
+
+  if (error) return res.status(500).json(error);
+  res.json(data);
+});
+
 app.get("/tracks", async (req, res) => {
   let query = supabase
     .from("tracks")
@@ -204,6 +217,46 @@ app.get("/toggle-friend/:id", async (req, res) => {
   if (error) return res.status(500).json({ ok: false, error: error.message });
 
   res.json({ ok: true, friend: data });
+});
+
+app.get("/stats", async (req, res) => {
+  const { count: newCount } = await supabase
+    .from("tracks")
+    .select("*", { count: "exact", head: true })
+    .eq("state", "NEW");
+
+  const { count: readCount } = await supabase
+    .from("tracks")
+    .select("*", { count: "exact", head: true })
+    .eq("state", "READ");
+
+  const { count: archiveCount } = await supabase
+    .from("tracks")
+    .select("*", { count: "exact", head: true })
+    .eq("state", "ARCHIVED");
+
+  const { count: friendCount } = await supabase
+    .from("friends")
+    .select("*", { count: "exact", head: true })
+    .eq("active", true);
+
+  res.json({
+    new: newCount || 0,
+    read: readCount || 0,
+    archived: archiveCount || 0,
+    friends: friendCount || 0
+  });
+});
+
+app.get("/latest", async (req, res) => {
+  const { data, error } = await supabase
+    .from("tracks")
+    .select("*")
+    .order("detected_at", { ascending: false })
+    .limit(20);
+
+  if (error) return res.status(500).json(error);
+  res.json(data);
 });
 
 app.get("/cleanup", async (req, res) => {
