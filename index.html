@@ -3,15 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SUNO Radar V4.2</title>
+<title>SUNO Radar V4.3</title>
 
 <style>
 body{margin:0;background:#111;color:#fff;font-family:Arial}
 header{padding:22px;background:#1f1f1f;font-size:30px;font-weight:bold}
 .toolbar{padding:15px;background:#151515;display:flex;gap:10px;flex-wrap:wrap}
 button{padding:10px 16px;border:0;border-radius:8px;font-weight:bold;cursor:pointer}
+input,select{padding:10px;border-radius:8px;border:1px solid #444;background:#222;color:white}
 .btn{background:#333;color:white}
 .scan{background:#00b894;color:white}
+.manage{background:#3b82f6;color:white}
 .active{background:#ff6b00;color:white}
 #count{padding:0 18px 12px;color:#aaa}
 #tracks{padding:18px}
@@ -24,12 +26,22 @@ button{padding:10px 16px;border:0;border-radius:8px;font-weight:bold;cursor:poin
 .friend a{color:#b9a7ff;text-decoration:none}
 .meta{color:#aaa;margin-top:5px}
 .listen{display:inline-block;margin-top:12px;padding:9px 18px;background:#ff6b00;color:white;text-decoration:none;border-radius:8px;font-weight:bold}
+
+#friendPanel{display:none;padding:18px;background:#181818;border-top:1px solid #333}
+.friendForm{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+.friendRow{display:flex;justify-content:space-between;gap:8px;background:#242424;margin-bottom:8px;padding:12px;border-radius:10px}
+.friendName{font-weight:bold}
+.small{font-size:13px;color:#aaa}
+.off{opacity:.45}
+.danger{background:#dc2626;color:white}
+.onbtn{background:#16a34a;color:white}
+.offbtn{background:#666;color:white}
 </style>
 </head>
 
 <body>
 
-<header>🎵 SUNO Radar V4.2</header>
+<header>🎵 SUNO Radar V4.3</header>
 
 <div class="toolbar">
 <button class="btn active" onclick="setState('NEW',this)">NEW</button>
@@ -41,6 +53,25 @@ button{padding:10px 16px;border:0;border-radius:8px;font-weight:bold;cursor:poin
 <button class="btn" onclick="clearGroup()">그룹해제</button>
 <button class="btn" onclick="loadTracks()">새로고침</button>
 <button class="scan" onclick="runScan()">수집 실행</button>
+<button class="manage" onclick="toggleFriendPanel()">친구관리</button>
+</div>
+
+<div id="friendPanel">
+<h2>친구관리</h2>
+
+<div class="friendForm">
+<input id="newName" placeholder="친구 이름">
+<input id="newUrl" placeholder="https://suno.com/@아이디" style="min-width:260px">
+<select id="newGroup">
+<option value="한국">한국</option>
+<option value="해외">해외</option>
+</select>
+<button class="scan" onclick="addFriend()">친구 추가</button>
+<button class="btn" onclick="loadFriends()">목록 새로고침</button>
+</div>
+
+<div id="friendCount" class="small">친구목록 로딩중...</div>
+<div id="friendList"></div>
 </div>
 
 <div id="count">로딩중...</div>
@@ -138,6 +169,71 @@ async function runScan(){
  const result=await res.json();
  alert(`수집 완료\n친구: ${result.friends}명\n신규 저장: ${result.inserted}곡`);
  await loadTracks();
+}
+
+function toggleFriendPanel(){
+ const panel=document.getElementById("friendPanel");
+ panel.style.display = panel.style.display==="block" ? "none" : "block";
+ if(panel.style.display==="block") loadFriends();
+}
+
+async function loadFriends(){
+ const res=await fetch("/friends");
+ const friends=await res.json();
+
+ document.getElementById("friendCount").innerText =
+ `친구 ${friends.length}명 / 활성 ${friends.filter(f=>f.active).length}명`;
+
+ document.getElementById("friendList").innerHTML=friends.map(f=>`
+ <div class="friendRow ${f.active ? "" : "off"}">
+   <div>
+     <div class="friendName">${f.friend_name} (${f.group_name})</div>
+     <div class="small">${f.profile_url}</div>
+   </div>
+   <div>
+     <button class="${f.active ? "onbtn" : "offbtn"}" onclick="toggleFriend(${f.id})">
+       ${f.active ? "ON" : "OFF"}
+     </button>
+     <button class="danger" onclick="deleteFriend(${f.id})">삭제</button>
+   </div>
+ </div>
+ `).join("");
+}
+
+async function addFriend(){
+ const name=document.getElementById("newName").value.trim();
+ const url=document.getElementById("newUrl").value.trim();
+ const group=document.getElementById("newGroup").value;
+
+ if(!name || !url){
+   alert("친구 이름과 URL을 입력하세요.");
+   return;
+ }
+
+ const api=`/add-friend?friend_name=${encodeURIComponent(name)}&profile_url=${encodeURIComponent(url)}&group_name=${encodeURIComponent(group)}`;
+ const res=await fetch(api);
+ const result=await res.json();
+
+ if(!result.ok){
+   alert("추가 실패: " + (result.error || "unknown"));
+   return;
+ }
+
+ document.getElementById("newName").value="";
+ document.getElementById("newUrl").value="";
+ await loadFriends();
+ alert("친구 추가 완료");
+}
+
+async function toggleFriend(id){
+ await fetch("/toggle-friend/" + id);
+ await loadFriends();
+}
+
+async function deleteFriend(id){
+ if(!confirm("정말 삭제할까요?")) return;
+ await fetch("/delete-friend/" + id);
+ await loadFriends();
 }
 
 loadTracks();
