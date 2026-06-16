@@ -384,6 +384,48 @@ app.get("/scan-friend/:id", async (req, res) => {
   }
 });
 
+app.get("/debug-profile/:id", async (req, res) => {
+  try {
+    const { data: friend, error } = await supabase
+      .from("friends")
+      .select("*")
+      .eq("id", req.params.id)
+      .single();
+
+    if (error) {
+      return res.status(500).json({ ok: false, error: error.message });
+    }
+
+    const { data: html } = await axios.get(friend.profile_url, {
+      headers,
+      timeout: 20000
+    });
+
+    const matches = [];
+    const patterns = ["song", "created_at", "clip", "id", "audio_url"];
+
+    for (const p of patterns) {
+      const idx = html.indexOf(p);
+      matches.push({
+        pattern: p,
+        found: idx >= 0,
+        preview: idx >= 0 ? html.slice(Math.max(0, idx - 300), idx + 700) : null
+      });
+    }
+
+    res.json({
+      ok: true,
+      friend: friend.friend_name,
+      profile_url: friend.profile_url,
+      html_length: html.length,
+      matches
+    });
+
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 app.get("/stats", async (req, res) => {
   const { count: newCount } = await supabase
     .from("tracks")
