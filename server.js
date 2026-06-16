@@ -22,10 +22,29 @@ const RECENT_LIMIT_DAYS = 14;
 const SONG_SCAN_LIMIT = 30;
 
 function extractSongIds(html) {
+
   const ids = new Set();
-  const re = /\/song\/([a-f0-9-]{36})/g;
+
   let m;
-  while ((m = re.exec(html)) !== null) ids.add(m[1]);
+
+  const re1 = /\/song\/([a-f0-9-]{36})/g;
+
+  while ((m = re1.exec(html)) !== null) {
+    ids.add(m[1]);
+  }
+
+  const re2 = /"entity_id":"([a-f0-9-]{36})"/g;
+
+  while ((m = re2.exec(html)) !== null) {
+    ids.add(m[1]);
+  }
+
+  const re3 = /\\"entity_id\\":\\"([a-f0-9-]{36})\\"/g;
+
+  while ((m = re3.exec(html)) !== null) {
+    ids.add(m[1]);
+  }
+
   return [...ids];
 }
 
