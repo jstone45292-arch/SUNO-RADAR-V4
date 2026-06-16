@@ -17,6 +17,8 @@ const headers = {
   "User-Agent": "Mozilla/5.0"
 };
 
+const NEW_LIMIT_DAYS = 14;
+
 function extractSongIds(html) {
   const ids = new Set();
   const re = /\/song\/([a-f0-9-]{36})/g;
@@ -25,13 +27,55 @@ function extractSongIds(html) {
   return [...ids];
 }
 
-async function getSongTitle(songUrl) {
+function classifyTrack(publicAt) {
+  if (!publicAt) {
+    return {
+      state: "ARCHIVED",
+      oldReason: "public_at_not_found"
+    };
+  }
+
+  const ageDays = (Date.now() - new Date(publicAt).getTime()) / (1000 * 60 * 60 * 24);
+
+  if (ageDays <= NEW_LIMIT_DAYS) {
+    return {
+      state: "NEW",
+      oldReason: null
+    };
+  }
+
+  return {
+    state: "ARCHIVED",
+    oldReason: `older_than_${NEW_LIMIT_DAYS}_days`
+  };
+}
+
+async function getSongInfo(songUrl) {
+  let title = "Suno song";
+  let publicAt = null;
+
   try {
     const { data } = await axios.get(songUrl, { headers, timeout: 15000 });
+
     const og = data.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i);
-    if (og) return og[1].replace(" | Suno", "").trim();
-  } catch {}
-  return "Suno song";
+    if (og) {
+      title = og[1].replace(" | Suno", "").trim();
+    }
+
+    const created1 = data.match(/"created_at"\s*:\s*"([^"]+)"/i);
+    const created2 = data.match(/\\"created_at\\"\s*:\s*\\"([^\\"]+)\\"/i);
+
+    if (created1) {
+      publicAt = created1[1];
+    } else if (created2) {
+      publicAt = created2[1];
+    }
+
+  } catch (e) {
+    console.log("song info fail:", songUrl, e.message);
+  }
+
+  return { title, publicAt };
 }
 
 async function cleanupTracks() {
@@ -69,40 +113,69 @@ async function scanOnce() {
   if (error) throw error;
 
   let inserted = 0;
+  let archivedOld = 0;
+  let skipped = 0;
 
   for (const friend of friends) {
     try {
       const { data: html } = await axios.get(friend.profile_url, { headers, timeout: 20000 });
-      const ids = extractSongIds(html).slice(0, 3);
+
+      const ids = extractSongIds(html).slice(0, 10);
 
       for (const id of ids) {
+        const { data: exists } = await supabase
+          .from("tracks")
+          .select("id")
+          .eq("track_key", id)
+          .maybeSingle();
+
+        if (exists) {
+          skipped++;
+          continue;
+        }
+
         const trackUrl = `https://suno.com/song/${id}`;
-        const title = await getSongTitle(trackUrl);
+        const info = await getSongInfo(trackUrl);
+        const judged = classifyTrack(info.publicAt);
+
+        const row = {
+          track_key: id,
+          friend_name: friend.friend_name,
+          title: info.title,
+          track_url: trackUrl,
+          profile_url: friend.profile_url,
+          group_name: friend.group_name,
+          state: judged.state,
+          public_at: info.publicAt,
+          old_reason: judged.oldReason,
+          detected_at: new Date().toISOString()
+        };
+
+        if (judged.state === "ARCHIVED") {
+          row.archived_at = new Date().toISOString();
+          archivedOld++;
+        }
 
         const { error: insertError } = await supabase
           .from("tracks")
-          .upsert({
-            track_key: id,
-            friend_name: friend.friend_name,
-            title,
-            track_url: trackUrl,
-            profile_url: friend.profile_url,
-            group_name: friend.group_name,
-            state: "NEW",
-            detected_at: new Date().toISOString()
-          }, {
-            onConflict: "track_key",
-            ignoreDuplicates: true
-          });
+          .insert(row);
 
         if (!insertError) inserted++;
+        else console.log("insert fail:", friend.friend_name, insertError.message);
       }
     } catch (e) {
       console.log("scan fail:", friend.friend_name, e.message);
     }
   }
 
-  return { ok: true, friends: friends.length, inserted };
+  return {
+    ok: true,
+    friends: friends.length,
+    inserted,
+    archivedOld,
+    skipped,
+    newLimitDays: NEW_LIMIT_DAYS
+  };
 }
 
 app.get("/", (req, res) => {
@@ -136,7 +209,8 @@ app.get("/tracks", async (req, res) => {
   let query = supabase
     .from("tracks")
     .select("*")
-    .order("created_at", { ascending: false });
+    .order("public_at", { ascending: false, nullsFirst: false })
+    .order("detected_at", { ascending: false });
 
   if (req.query.state) {
     query = query.eq("state", req.query.state);
@@ -252,6 +326,7 @@ app.get("/latest", async (req, res) => {
   const { data, error } = await supabase
     .from("tracks")
     .select("*")
+    .order("public_at", { ascending: false, nullsFirst: false })
     .order("detected_at", { ascending: false })
     .limit(20);
 
@@ -283,4 +358,3 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server running on ${PORT}`);
 });
-Commit changes
