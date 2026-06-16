@@ -274,8 +274,16 @@ async function loadFriends(){
  document.getElementById("friendList").innerHTML=friends.map(f=>`
  <div class="friendRow ${f.active ? "" : "off"}">
    <div>
-     <div class="friendName">${f.friend_name} (${f.group_name})</div>
-     <div class="small">${f.profile_url}</div>
+<div class="friendName">
+  <a href="${f.profile_url}" target="_blank" style="color:white;text-decoration:none;">
+    ${f.friend_name} (${f.group_name})
+  </a>
+</div>
+<div class="small">
+  <a href="${f.profile_url}" target="_blank" style="color:#aaa;text-decoration:none;">
+    ${f.profile_url}
+  </a>
+</div>
    </div>
    <div>
      <button class="${f.active ? "onbtn" : "offbtn"}" onclick="toggleFriend(${f.id})">
