@@ -45,6 +45,18 @@ function extractSongIds(html) {
     ids.add(m[1]);
   }
 
+  const re4 = /"id":"([a-f0-9-]{36})"/g;
+
+while ((m = re4.exec(html)) !== null) {
+  ids.add(m[1]);
+}
+
+const re5 = /\\"id\\":\\"([a-f0-9-]{36})\\"/g;
+
+while ((m = re5.exec(html)) !== null) {
+  ids.add(m[1]);
+}
+  
   return [...ids];
 }
 
