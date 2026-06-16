@@ -19,6 +19,7 @@ const headers = {
 
 const NEW_LIMIT_DAYS = 7;
 const RECENT_LIMIT_DAYS = 14;
+const SONG_SCAN_LIMIT = 30;
 
 function extractSongIds(html) {
   const ids = new Set();
@@ -30,10 +31,7 @@ function extractSongIds(html) {
 
 function classifyTrack(publicAt) {
   if (!publicAt) {
-    return {
-      state: "ARCHIVED",
-      oldReason: "public_at_not_found"
-    };
+    return { state: "ARCHIVED", oldReason: "public_at_not_found" };
   }
 
   const ageDays =
@@ -120,6 +118,82 @@ async function cleanupTracks() {
   };
 }
 
+async function scanFriend(friend) {
+  let inserted = 0;
+  let newCount = 0;
+  let recentCount = 0;
+  let archivedOld = 0;
+  let skipped = 0;
+
+  try {
+    const { data: html } = await axios.get(friend.profile_url, {
+      headers,
+      timeout: 20000
+    });
+
+    const ids = extractSongIds(html).slice(0, SONG_SCAN_LIMIT);
+
+    for (const id of ids) {
+      const { data: exists } = await supabase
+        .from("tracks")
+        .select("id")
+        .eq("track_key", id)
+        .maybeSingle();
+
+      if (exists) {
+        skipped++;
+        continue;
+      }
+
+      const trackUrl = `https://suno.com/song/${id}`;
+      const info = await getSongInfo(trackUrl);
+      const judged = classifyTrack(info.publicAt);
+
+      const row = {
+        track_key: id,
+        friend_name: friend.friend_name,
+        title: info.title,
+        track_url: trackUrl,
+        profile_url: friend.profile_url,
+        group_name: friend.group_name,
+        state: judged.state,
+        public_at: info.publicAt,
+        old_reason: judged.oldReason,
+        detected_at: new Date().toISOString()
+      };
+
+      if (judged.state === "ARCHIVED") {
+        row.archived_at = new Date().toISOString();
+        archivedOld++;
+      }
+
+      if (judged.state === "NEW") newCount++;
+      if (judged.state === "RECENT") recentCount++;
+
+      const { error: insertError } = await supabase
+        .from("tracks")
+        .insert(row);
+
+      if (!insertError) {
+        inserted++;
+      } else {
+        console.log("insert fail:", friend.friend_name, insertError.message);
+      }
+    }
+  } catch (e) {
+    console.log("scan fail:", friend.friend_name, e.message);
+  }
+
+  return {
+    friend: friend.friend_name,
+    inserted,
+    new: newCount,
+    recent: recentCount,
+    archivedOld,
+    skipped
+  };
+}
+
 async function scanOnce() {
   await cleanupTracks();
 
@@ -138,64 +212,13 @@ async function scanOnce() {
   let skipped = 0;
 
   for (const friend of friends) {
-    try {
-      const { data: html } = await axios.get(friend.profile_url, {
-        headers,
-        timeout: 20000
-      });
+    const r = await scanFriend(friend);
 
-      const ids = extractSongIds(html).slice(0, 10);
-
-      for (const id of ids) {
-        const { data: exists } = await supabase
-          .from("tracks")
-          .select("id")
-          .eq("track_key", id)
-          .maybeSingle();
-
-        if (exists) {
-          skipped++;
-          continue;
-        }
-
-        const trackUrl = `https://suno.com/song/${id}`;
-        const info = await getSongInfo(trackUrl);
-        const judged = classifyTrack(info.publicAt);
-
-        const row = {
-          track_key: id,
-          friend_name: friend.friend_name,
-          title: info.title,
-          track_url: trackUrl,
-          profile_url: friend.profile_url,
-          group_name: friend.group_name,
-          state: judged.state,
-          public_at: info.publicAt,
-          old_reason: judged.oldReason,
-          detected_at: new Date().toISOString()
-        };
-
-        if (judged.state === "ARCHIVED") {
-          row.archived_at = new Date().toISOString();
-          archivedOld++;
-        }
-
-        if (judged.state === "NEW") newCount++;
-        if (judged.state === "RECENT") recentCount++;
-
-        const { error: insertError } = await supabase
-          .from("tracks")
-          .insert(row);
-
-        if (!insertError) {
-          inserted++;
-        } else {
-          console.log("insert fail:", friend.friend_name, insertError.message);
-        }
-      }
-    } catch (e) {
-      console.log("scan fail:", friend.friend_name, e.message);
-    }
+    inserted += r.inserted;
+    newCount += r.new;
+    recentCount += r.recent;
+    archivedOld += r.archivedOld;
+    skipped += r.skipped;
   }
 
   return {
@@ -206,6 +229,7 @@ async function scanOnce() {
     recent: recentCount,
     archivedOld,
     skipped,
+    scanLimitPerFriend: SONG_SCAN_LIMIT,
     newLimitDays: NEW_LIMIT_DAYS,
     recentLimitDays: RECENT_LIMIT_DAYS
   };
@@ -335,6 +359,29 @@ app.get("/toggle-friend/:id", async (req, res) => {
   }
 
   res.json({ ok: true, friend: data });
+});
+
+app.get("/scan-friend/:id", async (req, res) => {
+  try {
+    const { data: friend, error } = await supabase
+      .from("friends")
+      .select("*")
+      .eq("id", req.params.id)
+      .single();
+
+    if (error) {
+      return res.status(500).json({ ok: false, error: error.message });
+    }
+
+    const result = await scanFriend(friend);
+
+    res.json({
+      ok: true,
+      result
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
 app.get("/stats", async (req, res) => {
