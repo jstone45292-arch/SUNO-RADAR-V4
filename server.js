@@ -19,7 +19,7 @@ const headers = {
 
 const NEW_LIMIT_DAYS = 7;
 const RECENT_LIMIT_DAYS = 14;
-const SONG_SCAN_LIMIT = 30;
+const SONG_SCAN_LIMIT = 5;
 
 function extractSongIds(html) {
 
