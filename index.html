@@ -6,7 +6,7 @@
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#ff6b00">
 
-<title>SUNO Radar V6.9</title>
+<title>SUNO Radar V6.9.1</title>
 
 <style>
 body{
@@ -294,7 +294,7 @@ input,select{
 
 <body>
 
-<header>🎵 SUNO Radar V6.9</header>
+<header>🎵 SUNO Radar V6.9.1</header>
 
 <div class="stats">
   <div class="statBox">
@@ -451,6 +451,47 @@ input,select{
       onclick="setYouTubeState('ALL')">전체</button>
   </div>
 
+  <div id="youtubeChannelPanel">
+
+    <div class="youtubeHeader">
+      <div>
+        <h2 style="margin:0 0 5px">📡 YouTube 구독채널 관리</h2>
+        <div class="small">
+          감시 ON 채널만 YouTube 수집 대상이 됩니다.
+          Google YouTube의 실제 구독 상태는 변경하지 않습니다.
+        </div>
+      </div>
+    </div>
+
+    <div class="youtubeChannelToolbar">
+
+      <input
+        id="youtubeChannelSearch"
+        placeholder="구독 채널 검색"
+        style="min-width:260px"
+        oninput="renderYouTubeChannels()">
+
+      <button class="onbtn" onclick="setAllYouTubeChannels(true)">
+        전체 ON
+      </button>
+
+      <button class="offbtn" onclick="setAllYouTubeChannels(false)">
+        전체 OFF
+      </button>
+
+      <button class="btn" onclick="loadYouTubeChannels()">
+        새로고침
+      </button>
+    </div>
+
+    <div id="youtubeChannelSummary" class="youtubeChannelSummary">
+      구독채널 목록 로딩 전
+    </div>
+
+    <div id="youtubeChannelList"></div>
+
+  </div>
+
   <div class="searchBar"
     style="padding:15px 0 10px;background:transparent">
 
@@ -466,46 +507,6 @@ input,select{
   </div>
 
   <div id="youtubeVideoList"></div>
-</div>
-
-<div id="youtubeChannelPanel">
-
-  <div class="youtubeHeader">
-    <div>
-      <h2 style="margin:0 0 5px">📡 YouTube 구독채널 관리</h2>
-      <div class="small">
-        감시 ON 채널만 YouTube 수집 대상이 됩니다.
-        Google YouTube의 실제 구독 상태는 변경하지 않습니다.
-      </div>
-    </div>
-  </div>
-
-  <div class="youtubeChannelToolbar">
-
-    <input
-      id="youtubeChannelSearch"
-      placeholder="구독 채널 검색"
-      style="min-width:260px"
-      oninput="renderYouTubeChannels()">
-
-    <button class="onbtn" onclick="setAllYouTubeChannels(true)">
-      전체 ON
-    </button>
-
-    <button class="offbtn" onclick="setAllYouTubeChannels(false)">
-      전체 OFF
-    </button>
-
-    <button class="btn" onclick="loadYouTubeChannels()">
-      새로고침
-    </button>
-  </div>
-
-  <div id="youtubeChannelSummary" class="youtubeChannelSummary">
-    구독채널 목록 로딩 전
-  </div>
-
-  <div id="youtubeChannelList"></div>
 </div>
 
 <div id="count">로딩중...</div>
@@ -1345,7 +1346,7 @@ async function scanYouTubeVideos(btn){
 }
 
 /* =====================================================
-   YouTube 구독채널 관리 V6.9
+   YouTube 구독채널 관리 V6.9.1
    ===================================================== */
 
 function toggleYouTubeChannelPanel(){
@@ -1358,8 +1359,19 @@ function toggleYouTubeChannelPanel(){
       ? "none"
       : "block";
 
-  if(panel.style.display === "block")
+  if(panel.style.display === "block"){
+
     loadYouTubeChannels();
+
+    setTimeout(() => {
+
+      panel.scrollIntoView({
+        behavior:"smooth",
+        block:"start"
+      });
+
+    },50);
+  }
 }
 
 async function loadYouTubeChannels(){
