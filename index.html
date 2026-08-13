@@ -4,361 +4,1353 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 
- <link rel="manifest" href="/manifest.json">
+<link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#ff6b00">
- 
- <title>SUNO Radar V5.5</title>
+
+<title>SUNO Radar V5.6</title>
 
 <style>
-body{margin:0;background:#111;color:#fff;font-family:Arial}
-header{padding:22px;background:#1f1f1f;font-size:30px;font-weight:bold}
-.toolbar{padding:15px;background:#151515;display:flex;gap:10px;flex-wrap:wrap}
-button{padding:10px 16px;border:0;border-radius:8px;font-weight:bold;cursor:pointer}
-input,select{padding:10px;border-radius:8px;border:1px solid #444;background:#222;color:white}
-.btn{background:#333;color:white}
-.scan{background:#00b894;color:white}
-.manage{background:#3b82f6;color:white}
-.active{background:#ff6b00;color:white}
-#count{padding:0 18px 12px;color:#aaa}
-#tracks{padding:18px}
-.card{background:#242424;border-radius:14px;padding:16px;margin-bottom:14px}
-.title{font-size:20px;font-weight:bold;margin-bottom:8px}
-.badge{padding:3px 7px;border-radius:6px;font-size:12px;margin-right:6px}
-.new{background:#ff3333;color:white}
-.read{background:#666;color:white}
-.archived{background:#555;color:#ddd}
-.friend a{color:#b9a7ff;text-decoration:none}
-.meta{color:#aaa;margin-top:5px}
-.listen{display:inline-block;margin-top:12px;padding:9px 18px;background:#ff6b00;color:white;text-decoration:none;border-radius:8px;font-weight:bold}
+body{
+  margin:0;
+  background:#111;
+  color:#fff;
+  font-family:Arial
+}
+
+header{
+  padding:22px;
+  background:#1f1f1f;
+  font-size:30px;
+  font-weight:bold
+}
+
+.toolbar{
+  padding:15px;
+  background:#151515;
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap
+}
+
+button{
+  padding:10px 16px;
+  border:0;
+  border-radius:8px;
+  font-weight:bold;
+  cursor:pointer
+}
+
+button:disabled{
+  opacity:.6;
+  cursor:not-allowed
+}
+
+input,select{
+  padding:10px;
+  border-radius:8px;
+  border:1px solid #444;
+  background:#222;
+  color:white
+}
+
+.btn{
+  background:#333;
+  color:white
+}
+
+.scan{
+  background:#00b894;
+  color:white
+}
+
+.manage{
+  background:#3b82f6;
+  color:white
+}
+
+.youtube{
+  background:#dc2626;
+  color:white
+}
+
+.active{
+  background:#ff6b00;
+  color:white
+}
+
+#count{
+  padding:0 18px 12px;
+  color:#aaa
+}
+
+#tracks{
+  padding:18px
+}
+
+.card{
+  background:#242424;
+  border-radius:14px;
+  padding:16px;
+  margin-bottom:14px
+}
+
+.title{
+  font-size:20px;
+  font-weight:bold;
+  margin-bottom:8px
+}
+
+.badge{
+  padding:3px 7px;
+  border-radius:6px;
+  font-size:12px;
+  margin-right:6px
+}
+
+.new{
+  background:#ff3333;
+  color:white
+}
+
+.read{
+  background:#666;
+  color:white
+}
+
+.archived{
+  background:#555;
+  color:#ddd
+}
+
+.friend a{
+  color:#b9a7ff;
+  text-decoration:none
+}
+
+.meta{
+  color:#aaa;
+  margin-top:5px
+}
+
+.listen{
+  display:inline-block;
+  margin-top:12px;
+  padding:9px 18px;
+  background:#ff6b00;
+  color:white;
+  text-decoration:none;
+  border-radius:8px;
+  font-weight:bold
+}
 
 .stats{
-display:grid;
-grid-template-columns:repeat(auto-fit,minmax(130px,1fr));
-gap:10px;
-padding:14px 18px;
-background:#151515;
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(130px,1fr));
+  gap:10px;
+  padding:14px 18px;
+  background:#151515
 }
+
 .statBox{
-background:#242424;
-border-radius:12px;
-padding:14px;
+  background:#242424;
+  border-radius:12px;
+  padding:14px
 }
-.statNum{font-size:24px;font-weight:bold;color:#ffb86b}
-.statLabel{font-size:13px;color:#aaa;margin-top:4px}
+
+.statNum{
+  font-size:24px;
+  font-weight:bold;
+  color:#ffb86b
+}
+
+.statLabel{
+  font-size:13px;
+  color:#aaa;
+  margin-top:4px
+}
 
 .searchBar{
-padding:12px 18px;
-background:#111;
-display:flex;
-gap:10px;
-flex-wrap:wrap;
+  padding:12px 18px;
+  background:#111;
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap
 }
 
-#friendPanel,#latestPanel{
-display:none;
-padding:18px;
-background:#181818;
-border-top:1px solid #333;
+#friendPanel,
+#latestPanel{
+  display:none;
+  padding:18px;
+  background:#181818;
+  border-top:1px solid #333
 }
-.friendForm{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
-.friendRow,.latestRow{
-display:flex;
-justify-content:space-between;
-gap:8px;
-background:#242424;
-margin-bottom:8px;
-padding:12px;
-border-radius:10px;
+
+.friendForm{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-bottom:18px
 }
-.friendName{font-weight:bold}
-.small{font-size:13px;color:#aaa}
-.off{opacity:.45}
-.danger{background:#dc2626;color:white}
-.onbtn{background:#16a34a;color:white}
-.offbtn{background:#666;color:white}
+
+.friendRow,
+.latestRow{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:8px;
+  background:#242424;
+  margin-bottom:8px;
+  padding:12px;
+  border-radius:10px
+}
+
+.friendActions{
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+  justify-content:flex-end
+}
+
+.friendName{
+  font-weight:bold
+}
+
+.small{
+  font-size:13px;
+  color:#aaa
+}
+
+.off{
+  opacity:.45
+}
+
+.danger{
+  background:#dc2626;
+  color:white
+}
+
+.onbtn{
+  background:#16a34a;
+  color:white
+}
+
+.offbtn{
+  background:#666;
+  color:white
+}
+
+.youtubeFound{
+  background:#dc2626 !important;
+  color:white
+}
+
+.youtubeNone{
+  background:#666 !important;
+  color:white
+}
+
+.youtubeStatus{
+  margin-top:5px;
+  font-size:12px;
+  color:#aaa
+}
 </style>
 </head>
 
 <body>
 
-<header>🎵 SUNO Radar V5.5</header>
+<header>🎵 SUNO Radar V5.6</header>
 
 <div class="stats">
-<div class="statBox"><div class="statNum" id="statFriends">-</div><div class="statLabel">활성 친구</div></div>
-<div class="statBox"><div class="statNum" id="statNew">-</div><div class="statLabel">NEW</div></div>
-<div class="statBox"><div class="statNum" id="statRead">-</div><div class="statLabel">READ</div></div>
-<div class="statBox"><div class="statNum" id="statArchived">-</div><div class="statLabel">ARCHIVED</div></div>
+
+<div class="statBox">
+  <div class="statNum" id="statFriends">-</div>
+  <div class="statLabel">활성 친구</div>
+</div>
+
+<div class="statBox">
+  <div class="statNum" id="statNew">-</div>
+  <div class="statLabel">NEW</div>
+</div>
+
+<div class="statBox">
+  <div class="statNum" id="statRead">-</div>
+  <div class="statLabel">READ</div>
+</div>
+
+<div class="statBox">
+  <div class="statNum" id="statArchived">-</div>
+  <div class="statLabel">ARCHIVED</div>
+</div>
+
 </div>
 
 <div class="toolbar">
-<button class="btn active" onclick="setState('NEW',this)">NEW</button>
-<button class="btn" onclick="setState('READ',this)">READ</button>
-<button class="btn" onclick="setState('ARCHIVED',this)">ARCHIVED</button>
-<button class="btn" onclick="setState('ALL',this)">전체</button>
-<button class="btn" onclick="setGroup('한국')">한국</button>
-<button class="btn" onclick="setGroup('해외')">해외</button>
-<button class="btn" onclick="clearGroup()">그룹해제</button>
-<button class="btn" onclick="loadTracks()">새로고침</button>
-<button class="scan" onclick="runScan()">수집 실행</button>
-<button class="manage" onclick="toggleFriendPanel()">친구관리</button>
-<button class="manage" onclick="toggleLatestPanel()">최근수집</button>
-<button class="btn" onclick="runCleanup()">정리실행</button>
+
+<button class="btn active"
+onclick="setState('NEW',this)">
+NEW
+</button>
+
+<button class="btn"
+onclick="setState('READ',this)">
+READ
+</button>
+
+<button class="btn"
+onclick="setState('ARCHIVED',this)">
+ARCHIVED
+</button>
+
+<button class="btn"
+onclick="setState('ALL',this)">
+전체
+</button>
+
+<button class="btn"
+onclick="setGroup('한국')">
+한국
+</button>
+
+<button class="btn"
+onclick="setGroup('해외')">
+해외
+</button>
+
+<button class="btn"
+onclick="clearGroup()">
+그룹해제
+</button>
+
+<button class="btn"
+onclick="loadTracks()">
+새로고침
+</button>
+
+<button class="scan"
+onclick="runScan()">
+수집 실행
+</button>
+
+<button class="manage"
+onclick="toggleFriendPanel()">
+친구관리
+</button>
+
+<button class="youtube"
+onclick="scanAllYouTube()">
+▶ YouTube 전체확인
+</button>
+
+<button class="manage"
+onclick="toggleLatestPanel()">
+최근수집
+</button>
+
+<button class="btn"
+onclick="runCleanup()">
+정리실행
+</button>
+
 </div>
 
 <div class="searchBar">
-<input id="trackSearch" placeholder="곡 제목 / 친구명 검색" style="min-width:260px" oninput="render()">
+
+<input
+id="trackSearch"
+placeholder="곡 제목 / 친구명 검색"
+style="min-width:260px"
+oninput="render()">
+
 </div>
 
 <div id="friendPanel">
+
 <h2>친구관리</h2>
 
 <div class="friendForm">
-<input id="friendSearch" placeholder="친구 검색" oninput="loadFriends()" style="min-width:180px">
-<input id="newName" placeholder="친구 이름">
-<input id="newUrl" placeholder="https://suno.com/@아이디" style="min-width:260px">
+
+<input
+id="friendSearch"
+placeholder="친구 검색"
+oninput="loadFriends()"
+style="min-width:180px">
+
+<input
+id="newName"
+placeholder="친구 이름">
+
+<input
+id="newUrl"
+placeholder="https://suno.com/@아이디"
+style="min-width:260px">
+
 <select id="newGroup">
 <option value="한국">한국</option>
 <option value="해외">해외</option>
 </select>
-<button class="scan" onclick="addFriend()">친구 추가</button>
-<button class="btn" onclick="loadFriends()">목록 새로고침</button>
+
+<button
+class="scan"
+onclick="addFriend()">
+친구 추가
+</button>
+
+<button
+class="btn"
+onclick="loadFriends()">
+목록 새로고침
+</button>
+
 </div>
 
-<div id="friendCount" class="small">친구목록 로딩중...</div>
+<div
+id="friendCount"
+class="small">
+친구목록 로딩중...
+</div>
+
 <div id="friendList"></div>
+
 </div>
 
 <div id="latestPanel">
+
 <h2>최근수집 20곡</h2>
+
 <div id="latestList"></div>
+
 </div>
 
 <div id="count">로딩중...</div>
+
 <div id="tracks"></div>
 
 <script>
-let allTracks=[];
-let currentState="NEW";
-let currentGroup="ALL";
+
+let allTracks = [];
+
+let currentState = "NEW";
+
+let currentGroup = "ALL";
+
+let youtubeCache = {};
+
+
+// ======================================================
+// 시간 표시
+// ======================================================
 
 function timeAgo(dateText){
- if(!dateText) return "-";
- const d=new Date(dateText);
- const diff=(Date.now()-d.getTime())/1000;
- if(diff<60) return "방금 전";
- if(diff<3600) return Math.floor(diff/60)+"분 전";
- if(diff<86400) return Math.floor(diff/3600)+"시간 전";
- return Math.floor(diff/86400)+"일 전";
+
+  if(!dateText) return "-";
+
+  const d = new Date(dateText);
+
+  const diff =
+    (Date.now() - d.getTime()) / 1000;
+
+  if(diff < 60)
+    return "방금 전";
+
+  if(diff < 3600)
+    return Math.floor(diff / 60) + "분 전";
+
+  if(diff < 86400)
+    return Math.floor(diff / 3600) + "시간 전";
+
+  return Math.floor(diff / 86400) + "일 전";
 }
+
+
+// ======================================================
+// 통계
+// ======================================================
 
 async function loadStats(){
- const res=await fetch("/stats");
- const s=await res.json();
- document.getElementById("statFriends").innerText=s.friends ?? 0;
- document.getElementById("statNew").innerText=s.new ?? 0;
- document.getElementById("statRead").innerText=s.read ?? 0;
- document.getElementById("statArchived").innerText=s.archived ?? 0;
+
+  const res = await fetch("/stats");
+
+  const s = await res.json();
+
+  document.getElementById("statFriends").innerText =
+    s.friends ?? 0;
+
+  document.getElementById("statNew").innerText =
+    s.new ?? 0;
+
+  document.getElementById("statRead").innerText =
+    s.read ?? 0;
+
+  document.getElementById("statArchived").innerText =
+    s.archived ?? 0;
 }
 
-function setState(state,btn){
- currentState=state;
- document.querySelectorAll(".toolbar .btn").forEach(b=>b.classList.remove("active"));
- if(btn) btn.classList.add("active");
- loadTracks();
+
+// ======================================================
+// 상태
+// ======================================================
+
+function setState(state, btn){
+
+  currentState = state;
+
+  document
+    .querySelectorAll(".toolbar .btn")
+    .forEach(
+      b => b.classList.remove("active")
+    );
+
+  if(btn)
+    btn.classList.add("active");
+
+  loadTracks();
 }
+
+
+// ======================================================
+// 그룹
+// ======================================================
 
 function setGroup(group){
- currentGroup=group;
- render();
+
+  currentGroup = group;
+
+  render();
 }
+
 
 function clearGroup(){
- currentGroup="ALL";
- render();
+
+  currentGroup = "ALL";
+
+  render();
 }
+
+
+// ======================================================
+// 곡
+// ======================================================
 
 async function loadTracks(){
- document.getElementById("count").innerText="로딩중...";
- let url="/tracks";
- if(currentState!=="ALL") url += "?state=" + currentState;
- const res=await fetch(url);
- allTracks=await res.json();
- await loadStats();
- render();
+
+  document.getElementById("count").innerText =
+    "로딩중...";
+
+  let url = "/tracks";
+
+  if(currentState !== "ALL"){
+
+    url +=
+      "?state=" +
+      currentState;
+
+  }
+
+  const res =
+    await fetch(url);
+
+  allTracks =
+    await res.json();
+
+  await loadStats();
+
+  render();
 }
+
+
+// ======================================================
+// 상태 배지
+// ======================================================
 
 function badgeClass(state){
- if(state==="NEW") return "new";
- if(state==="READ") return "read";
- if(state==="ARCHIVED") return "archived";
- return "read";
+
+  if(state === "NEW")
+    return "new";
+
+  if(state === "READ")
+    return "read";
+
+  if(state === "ARCHIVED")
+    return "archived";
+
+  return "read";
 }
 
-async function listenTrack(id,url){
- await fetch("/mark-read/" + id);
- window.open(url,"_blank");
- await loadTracks();
+
+// ======================================================
+// 곡 듣기
+// ======================================================
+
+async function listenTrack(id, url){
+
+  await fetch(
+    "/mark-read/" + id
+  );
+
+  window.open(
+    url,
+    "_blank"
+  );
+
+  await loadTracks();
 }
+
+
+// ======================================================
+// 곡 표시
+// ======================================================
 
 function render(){
- let data=allTracks;
- const q=document.getElementById("trackSearch").value.trim().toLowerCase();
 
- if(currentGroup!=="ALL"){
-   data=data.filter(t=>t.group_name===currentGroup);
- }
+  let data =
+    allTracks;
 
- if(q){
-   data=data.filter(t =>
-     (t.title || "").toLowerCase().includes(q) ||
-     (t.friend_name || "").toLowerCase().includes(q)
-   );
- }
+  const q =
+    document
+      .getElementById("trackSearch")
+      .value
+      .trim()
+      .toLowerCase();
 
- document.getElementById("count").innerText =
- `상태 ${currentState} / 그룹 ${currentGroup} / 표시 ${data.length}곡`;
+  if(currentGroup !== "ALL"){
 
- document.getElementById("tracks").innerHTML=data.map(t=>`
- <div class="card">
-   <div class="title">
-     <span class="badge ${badgeClass(t.state)}">${t.state || "NEW"}</span>
-     ${t.title || "Suno song"}
-   </div>
+    data =
+      data.filter(
+        t =>
+          t.group_name === currentGroup
+      );
 
-   <div class="friend">
-     👤 <a href="${t.profile_url}" target="_blank">${t.friend_name}</a>
-   </div>
+  }
 
-   <div class="meta">
-     🌐 ${t.group_name || "-"} · 🕒 ${timeAgo(t.created_at || t.detected_at)}
-   </div>
+  if(q){
 
-   <button class="listen" onclick="listenTrack(${t.id}, '${t.track_url}')">
-     듣기
-   </button>
- </div>
- `).join("");
+    data =
+      data.filter(
+        t =>
+
+          (t.title || "")
+            .toLowerCase()
+            .includes(q)
+
+          ||
+
+          (t.friend_name || "")
+            .toLowerCase()
+            .includes(q)
+
+      );
+
+  }
+
+  document.getElementById("count").innerText =
+    `상태 ${currentState} / 그룹 ${currentGroup} / 표시 ${data.length}곡`;
+
+  document.getElementById("tracks").innerHTML =
+    data.map(t => `
+
+      <div class="card">
+
+        <div class="title">
+
+          <span class="badge ${badgeClass(t.state)}">
+            ${t.state || "NEW"}
+          </span>
+
+          ${t.title || "Suno song"}
+
+        </div>
+
+        <div class="friend">
+
+          👤
+          <a
+            href="${t.profile_url}"
+            target="_blank">
+            ${t.friend_name}
+          </a>
+
+        </div>
+
+        <div class="meta">
+
+          🌐 ${t.group_name || "-"}
+
+          ·
+
+          🕒
+          ${timeAgo(
+            t.created_at ||
+            t.detected_at
+          )}
+
+        </div>
+
+        <button
+          class="listen"
+          onclick="listenTrack(
+            ${t.id},
+            '${t.track_url}'
+          )">
+
+          듣기
+
+        </button>
+
+      </div>
+
+    `).join("");
 }
+
+
+// ======================================================
+// 수집 실행
+// ======================================================
 
 async function runScan(){
- document.getElementById("count").innerText="수집 실행중...";
- const res=await fetch("/scan");
- const result=await res.json();
- alert(`수집 완료\n친구: ${result.friends}명\n신규 저장: ${result.inserted}곡`);
- await loadTracks();
- await loadLatest();
+
+  document.getElementById("count").innerText =
+    "수집 실행중...";
+
+  const res =
+    await fetch("/scan");
+
+  const result =
+    await res.json();
+
+  alert(
+    `수집 완료\n친구: ${result.friends}명\n신규 저장: ${result.inserted}곡`
+  );
+
+  await loadTracks();
+
+  await loadLatest();
 }
+
+
+// ======================================================
+// 정리
+// ======================================================
 
 async function runCleanup(){
- const res=await fetch("/cleanup");
- const result=await res.json();
- alert("정리 완료: " + JSON.stringify(result));
- await loadTracks();
+
+  const res =
+    await fetch("/cleanup");
+
+  const result =
+    await res.json();
+
+  alert(
+    "정리 완료: " +
+    JSON.stringify(result)
+  );
+
+  await loadTracks();
 }
+
+
+// ======================================================
+// 친구 패널
+// ======================================================
 
 function toggleFriendPanel(){
- const panel=document.getElementById("friendPanel");
- panel.style.display = panel.style.display==="block" ? "none" : "block";
- if(panel.style.display==="block") loadFriends();
+
+  const panel =
+    document.getElementById(
+      "friendPanel"
+    );
+
+  panel.style.display =
+    panel.style.display === "block"
+      ? "none"
+      : "block";
+
+  if(
+    panel.style.display === "block"
+  ){
+    loadFriends();
+  }
 }
+
+
+// ======================================================
+// 친구 목록
+// ======================================================
 
 async function loadFriends(){
- const q=document.getElementById("friendSearch")?.value?.trim() || "";
- const url=q ? "/friend-search?q=" + encodeURIComponent(q) : "/friends";
- const res=await fetch(url);
- const friends=await res.json();
 
- document.getElementById("friendCount").innerText =
- `친구 ${friends.length}명 / 활성 ${friends.filter(f=>f.active).length}명`;
+  const q =
+    document
+      .getElementById("friendSearch")
+      ?.value
+      ?.trim()
+    || "";
 
- document.getElementById("friendList").innerHTML=friends.map(f=>`
- <div class="friendRow ${f.active ? "" : "off"}">
-   <div>
-<div class="friendName">
-  <a href="${f.profile_url}" target="_blank" style="color:white;text-decoration:none;">
-    ${f.friend_name} (${f.group_name})
-  </a>
-</div>
-<div class="small">
-  <a href="${f.profile_url}" target="_blank" style="color:#aaa;text-decoration:none;">
-    ${f.profile_url}
-  </a>
-</div>
-   </div>
-   <div>
-     <button class="${f.active ? "onbtn" : "offbtn"}" onclick="toggleFriend(${f.id})">
-       ${f.active ? "ON" : "OFF"}
-     </button>
-     <button class="danger" onclick="deleteFriend(${f.id})">삭제</button>
-   </div>
- </div>
- `).join("");
+  const url =
+    q
+    ?
+    "/friend-search?q=" +
+      encodeURIComponent(q)
+    :
+    "/friends";
+
+  const res =
+    await fetch(url);
+
+  const friends =
+    await res.json();
+
+  document.getElementById("friendCount").innerText =
+    `친구 ${friends.length}명 / 활성 ${friends.filter(f => f.active).length}명`;
+
+  document.getElementById("friendList").innerHTML =
+    friends.map(f => {
+
+      const yt =
+        youtubeCache[f.id];
+
+      let ytButtonText =
+        "▶ YouTube";
+
+      let ytClass =
+        "youtube";
+
+      let ytStatus =
+        "";
+
+      if(yt){
+
+        if(yt.youtube_url){
+
+          ytButtonText =
+            "▶ YouTube 있음";
+
+          ytClass =
+            "youtube youtubeFound";
+
+          ytStatus =
+            "YouTube 링크 발견";
+
+        }else{
+
+          ytButtonText =
+            "YouTube 없음";
+
+          ytClass =
+            "youtube youtubeNone";
+
+          ytStatus =
+            "공개 YouTube 링크 없음";
+
+        }
+
+      }
+
+      return `
+
+      <div class="friendRow ${f.active ? "" : "off"}">
+
+        <div>
+
+          <div class="friendName">
+
+            <a
+              href="${f.profile_url}"
+              target="_blank"
+              style="
+                color:white;
+                text-decoration:none;
+              ">
+
+              ${f.friend_name}
+              (${f.group_name})
+
+            </a>
+
+          </div>
+
+          <div class="small">
+
+            <a
+              href="${f.profile_url}"
+              target="_blank"
+              style="
+                color:#aaa;
+                text-decoration:none;
+              ">
+
+              ${f.profile_url}
+
+            </a>
+
+          </div>
+
+          ${
+            ytStatus
+            ?
+            `<div class="youtubeStatus">${ytStatus}</div>`
+            :
+            ""
+          }
+
+        </div>
+
+        <div class="friendActions">
+
+          <button
+            class="${ytClass}"
+            onclick="checkFriendYouTube(
+              ${f.id},
+              this
+            )">
+
+            ${ytButtonText}
+
+          </button>
+
+          <button
+            class="${
+              f.active
+              ? "onbtn"
+              : "offbtn"
+            }"
+            onclick="toggleFriend(${f.id})">
+
+            ${
+              f.active
+              ? "ON"
+              : "OFF"
+            }
+
+          </button>
+
+          <button
+            class="danger"
+            onclick="deleteFriend(${f.id})">
+
+            삭제
+
+          </button>
+
+        </div>
+
+      </div>
+
+      `;
+
+    }).join("");
 }
+
+
+// ======================================================
+// 친구 1명 YouTube 확인
+// ======================================================
+
+async function checkFriendYouTube(id, btn){
+
+  if(
+    youtubeCache[id] &&
+    youtubeCache[id].youtube_url
+  ){
+
+    window.open(
+      youtubeCache[id].youtube_url,
+      "_blank"
+    );
+
+    return;
+  }
+
+  const originalText =
+    btn.innerText;
+
+  btn.disabled = true;
+
+  btn.innerText =
+    "확인중...";
+
+  try{
+
+    const res =
+      await fetch(
+        "/friend-youtube/" + id
+      );
+
+    const result =
+      await res.json();
+
+    youtubeCache[id] =
+      result;
+
+    if(result.youtube_url){
+
+      btn.innerText =
+        "▶ YouTube 있음";
+
+      btn.classList.add(
+        "youtubeFound"
+      );
+
+      btn.disabled =
+        false;
+
+      btn.onclick =
+        () =>
+          window.open(
+            result.youtube_url,
+            "_blank"
+          );
+
+    }else{
+
+      btn.innerText =
+        "YouTube 없음";
+
+      btn.classList.add(
+        "youtubeNone"
+      );
+
+      btn.disabled =
+        false;
+
+    }
+
+  }catch(e){
+
+    alert(
+      "YouTube 확인 실패"
+    );
+
+    btn.innerText =
+      originalText;
+
+    btn.disabled =
+      false;
+
+  }
+}
+
+
+// ======================================================
+// 활성 친구 전체 YouTube 확인
+// ======================================================
+
+async function scanAllYouTube(){
+
+  if(
+    !confirm(
+      "활성 친구 전체의 YouTube 링크를 확인할까요?\n친구 수가 많으면 시간이 조금 걸릴 수 있습니다."
+    )
+  ){
+    return;
+  }
+
+  const button =
+    event?.target;
+
+  const originalText =
+    button
+    ? button.innerText
+    : "";
+
+  if(button){
+
+    button.disabled =
+      true;
+
+    button.innerText =
+      "YouTube 확인중...";
+
+  }
+
+  try{
+
+    const res =
+      await fetch(
+        "/friends-youtube"
+      );
+
+    const result =
+      await res.json();
+
+    if(!result.ok){
+
+      alert(
+        "YouTube 전체 확인 실패"
+      );
+
+      return;
+
+    }
+
+    if(
+      Array.isArray(
+        result.results
+      )
+    ){
+
+      result.results.forEach(
+        r => {
+
+          const friend =
+            window.currentFriendList
+            ?.find(
+              f =>
+                f.friend_name ===
+                r.friend
+            );
+
+          if(friend){
+
+            youtubeCache[
+              friend.id
+            ] = r;
+
+          }
+
+        }
+      );
+
+    }
+
+    alert(
+      `YouTube 확인 완료\n활성 친구: ${result.friends}명\nYouTube 발견: ${result.found}명`
+    );
+
+    await loadFriends();
+
+  }catch(e){
+
+    alert(
+      "YouTube 전체 확인 중 오류 발생"
+    );
+
+  }finally{
+
+    if(button){
+
+      button.disabled =
+        false;
+
+      button.innerText =
+        originalText;
+
+    }
+
+  }
+}
+
+
+// ======================================================
+// 친구 추가
+// ======================================================
 
 async function addFriend(){
- const name=document.getElementById("newName").value.trim();
- const url=document.getElementById("newUrl").value.trim();
- const group=document.getElementById("newGroup").value;
 
- if(!name || !url){
-   alert("친구 이름과 URL을 입력하세요.");
-   return;
- }
+  const name =
+    document
+      .getElementById("newName")
+      .value
+      .trim();
 
- const api=`/add-friend?friend_name=${encodeURIComponent(name)}&profile_url=${encodeURIComponent(url)}&group_name=${encodeURIComponent(group)}`;
- const res=await fetch(api);
- const result=await res.json();
+  const url =
+    document
+      .getElementById("newUrl")
+      .value
+      .trim();
 
- if(!result.ok){
-   alert("추가 실패: " + (result.error || "unknown"));
-   return;
- }
+  const group =
+    document
+      .getElementById("newGroup")
+      .value;
 
- document.getElementById("newName").value="";
- document.getElementById("newUrl").value="";
- await loadFriends();
- await loadStats();
- alert("친구 추가 완료");
+  if(
+    !name ||
+    !url
+  ){
+
+    alert(
+      "친구 이름과 URL을 입력하세요."
+    );
+
+    return;
+  }
+
+  const api =
+    `/add-friend?friend_name=${encodeURIComponent(name)}&profile_url=${encodeURIComponent(url)}&group_name=${encodeURIComponent(group)}`;
+
+  const res =
+    await fetch(api);
+
+  const result =
+    await res.json();
+
+  if(!result.ok){
+
+    alert(
+      "추가 실패: " +
+      (
+        result.error ||
+        "unknown"
+      )
+    );
+
+    return;
+  }
+
+  document
+    .getElementById("newName")
+    .value = "";
+
+  document
+    .getElementById("newUrl")
+    .value = "";
+
+  await loadFriends();
+
+  await loadStats();
+
+  alert(
+    "친구 추가 완료"
+  );
 }
+
+
+// ======================================================
+// 친구 ON/OFF
+// ======================================================
 
 async function toggleFriend(id){
- await fetch("/toggle-friend/" + id);
- await loadFriends();
- await loadStats();
+
+  await fetch(
+    "/toggle-friend/" + id
+  );
+
+  await loadFriends();
+
+  await loadStats();
 }
+
+
+// ======================================================
+// 친구 삭제
+// ======================================================
 
 async function deleteFriend(id){
- if(!confirm("정말 삭제할까요?")) return;
- await fetch("/delete-friend/" + id);
- await loadFriends();
- await loadStats();
+
+  if(
+    !confirm(
+      "정말 삭제할까요?"
+    )
+  ){
+    return;
+  }
+
+  await fetch(
+    "/delete-friend/" + id
+  );
+
+  delete youtubeCache[id];
+
+  await loadFriends();
+
+  await loadStats();
 }
+
+
+// ======================================================
+// 최근수집 패널
+// ======================================================
 
 function toggleLatestPanel(){
- const panel=document.getElementById("latestPanel");
- panel.style.display = panel.style.display==="block" ? "none" : "block";
- if(panel.style.display==="block") loadLatest();
+
+  const panel =
+    document.getElementById(
+      "latestPanel"
+    );
+
+  panel.style.display =
+    panel.style.display === "block"
+      ? "none"
+      : "block";
+
+  if(
+    panel.style.display === "block"
+  ){
+
+    loadLatest();
+
+  }
 }
+
+
+// ======================================================
+// 최근수집
+// ======================================================
 
 async function loadLatest(){
- const res=await fetch("/latest");
- const data=await res.json();
 
- document.getElementById("latestList").innerHTML=data.map(t=>`
- <div class="latestRow">
-   <div>
-     <div class="friendName">${t.title || "Suno song"}</div>
-     <div class="small">${t.friend_name} · ${timeAgo(t.detected_at || t.created_at)}</div>
-   </div>
-   <div>
-     <a class="listen" href="${t.track_url}" target="_blank">듣기</a>
-   </div>
- </div>
- `).join("");
+  const res =
+    await fetch("/latest");
+
+  const data =
+    await res.json();
+
+  document.getElementById("latestList").innerHTML =
+    data.map(t => `
+
+      <div class="latestRow">
+
+        <div>
+
+          <div class="friendName">
+
+            ${t.title || "Suno song"}
+
+          </div>
+
+          <div class="small">
+
+            ${t.friend_name}
+
+            ·
+
+            ${timeAgo(
+              t.detected_at ||
+              t.created_at
+            )}
+
+          </div>
+
+        </div>
+
+        <div>
+
+          <a
+            class="listen"
+            href="${t.track_url}"
+            target="_blank">
+
+            듣기
+
+          </a>
+
+        </div>
+
+      </div>
+
+    `).join("");
 }
 
+
+// ======================================================
+// 시작
+// ======================================================
+
 loadTracks();
+
 loadStats();
+
 </script>
 
 </body>
