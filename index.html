@@ -3,11 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#ff6b00">
 
-<title>SUNO Radar V5.6</title>
+<title>SUNO Radar V6.8</title>
 
 <style>
 body{
@@ -16,14 +15,12 @@ body{
   color:#fff;
   font-family:Arial
 }
-
 header{
   padding:22px;
   background:#1f1f1f;
   font-size:30px;
   font-weight:bold
 }
-
 .toolbar{
   padding:15px;
   background:#151515;
@@ -31,7 +28,6 @@ header{
   gap:10px;
   flex-wrap:wrap
 }
-
 button{
   padding:10px 16px;
   border:0;
@@ -39,12 +35,10 @@ button{
   font-weight:bold;
   cursor:pointer
 }
-
 button:disabled{
   opacity:.6;
   cursor:not-allowed
 }
-
 input,select{
   padding:10px;
   border-radius:8px;
@@ -52,96 +46,15 @@ input,select{
   background:#222;
   color:white
 }
-
-.btn{
-  background:#333;
-  color:white
-}
-
-.scan{
-  background:#00b894;
-  color:white
-}
-
-.manage{
-  background:#3b82f6;
-  color:white
-}
-
-.youtube{
-  background:#dc2626;
-  color:white
-}
-
-.active{
-  background:#ff6b00;
-  color:white
-}
-
-#count{
-  padding:0 18px 12px;
-  color:#aaa
-}
-
-#tracks{
-  padding:18px
-}
-
-.card{
-  background:#242424;
-  border-radius:14px;
-  padding:16px;
-  margin-bottom:14px
-}
-
-.title{
-  font-size:20px;
-  font-weight:bold;
-  margin-bottom:8px
-}
-
-.badge{
-  padding:3px 7px;
-  border-radius:6px;
-  font-size:12px;
-  margin-right:6px
-}
-
-.new{
-  background:#ff3333;
-  color:white
-}
-
-.read{
-  background:#666;
-  color:white
-}
-
-.archived{
-  background:#555;
-  color:#ddd
-}
-
-.friend a{
-  color:#b9a7ff;
-  text-decoration:none
-}
-
-.meta{
-  color:#aaa;
-  margin-top:5px
-}
-
-.listen{
-  display:inline-block;
-  margin-top:12px;
-  padding:9px 18px;
-  background:#ff6b00;
-  color:white;
-  text-decoration:none;
-  border-radius:8px;
-  font-weight:bold
-}
+.btn{background:#333;color:white}
+.scan{background:#00b894;color:white}
+.manage{background:#3b82f6;color:white}
+.youtube{background:#dc2626;color:white}
+.youtubeRadar{background:#b91c1c;color:white}
+.active{background:#ff6b00!important;color:white}
+.danger{background:#dc2626;color:white}
+.onbtn{background:#16a34a;color:white}
+.offbtn{background:#666;color:white}
 
 .stats{
   display:grid;
@@ -150,19 +63,16 @@ input,select{
   padding:14px 18px;
   background:#151515
 }
-
 .statBox{
   background:#242424;
   border-radius:12px;
   padding:14px
 }
-
 .statNum{
   font-size:24px;
   font-weight:bold;
   color:#ffb86b
 }
-
 .statLabel{
   font-size:13px;
   color:#aaa;
@@ -177,8 +87,56 @@ input,select{
   flex-wrap:wrap
 }
 
+#count{
+  padding:0 18px 12px;
+  color:#aaa
+}
+#tracks{
+  padding:18px
+}
+.card{
+  background:#242424;
+  border-radius:14px;
+  padding:16px;
+  margin-bottom:14px
+}
+.title{
+  font-size:20px;
+  font-weight:bold;
+  margin-bottom:8px
+}
+.badge{
+  padding:3px 7px;
+  border-radius:6px;
+  font-size:12px;
+  margin-right:6px
+}
+.new{background:#ff3333;color:white}
+.read{background:#666;color:white}
+.archived{background:#555;color:#ddd}
+
+.friend a{
+  color:#b9a7ff;
+  text-decoration:none
+}
+.meta{
+  color:#aaa;
+  margin-top:5px
+}
+.listen{
+  display:inline-block;
+  margin-top:12px;
+  padding:9px 18px;
+  background:#ff6b00;
+  color:white;
+  text-decoration:none;
+  border-radius:8px;
+  font-weight:bold
+}
+
 #friendPanel,
-#latestPanel{
+#latestPanel,
+#youtubePanel{
   display:none;
   padding:18px;
   background:#181818;
@@ -191,7 +149,6 @@ input,select{
   flex-wrap:wrap;
   margin-bottom:18px
 }
-
 .friendRow,
 .latestRow{
   display:flex;
@@ -203,242 +160,356 @@ input,select{
   padding:12px;
   border-radius:10px
 }
-
 .friendActions{
   display:flex;
   gap:6px;
   flex-wrap:wrap;
   justify-content:flex-end
 }
-
-.friendName{
-  font-weight:bold
-}
-
-.small{
-  font-size:13px;
-  color:#aaa
-}
-
-.off{
-  opacity:.45
-}
-
-.danger{
-  background:#dc2626;
-  color:white
-}
-
-.onbtn{
-  background:#16a34a;
-  color:white
-}
-
-.offbtn{
-  background:#666;
-  color:white
-}
+.friendName{font-weight:bold}
+.small{font-size:13px;color:#aaa}
+.off{opacity:.45}
 
 .youtubeFound{
-  background:#dc2626 !important;
+  background:#dc2626!important;
   color:white
 }
-
 .youtubeNone{
-  background:#666 !important;
+  background:#666!important;
   color:white
 }
-
 .youtubeStatus{
   margin-top:5px;
   font-size:12px;
   color:#aaa
+}
+
+/* YouTube Radar */
+.youtubeHeader{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-bottom:14px
+}
+.youtubeTabs{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap
+}
+.youtubeVideoRow{
+  display:flex;
+  gap:14px;
+  background:#242424;
+  border-radius:12px;
+  padding:12px;
+  margin-bottom:10px;
+  align-items:center
+}
+.youtubeThumb{
+  width:180px;
+  max-width:32vw;
+  aspect-ratio:16/9;
+  object-fit:cover;
+  border-radius:8px;
+  background:#111
+}
+.youtubeVideoInfo{
+  flex:1;
+  min-width:0
+}
+.youtubeVideoTitle{
+  font-size:18px;
+  font-weight:bold;
+  margin-bottom:6px
+}
+.youtubeVideoActions{
+  display:flex;
+  gap:7px;
+  flex-wrap:wrap;
+  margin-top:10px
+}
+.youtubeCount{
+  color:#aaa;
+  margin:8px 0 14px
+}
+.youtubeConnection{
+  padding:12px;
+  background:#202020;
+  border-radius:10px;
+  margin-bottom:14px;
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  align-items:center
+}
+.connected{
+  color:#5ee28a;
+  font-weight:bold
+}
+.disconnected{
+  color:#ff8585;
+  font-weight:bold
+}
+
+@media(max-width:700px){
+  .youtubeVideoRow{
+    align-items:flex-start
+  }
+  .youtubeThumb{
+    width:130px
+  }
 }
 </style>
 </head>
 
 <body>
 
-<header>🎵 SUNO Radar V5.6</header>
+<header>🎵 SUNO Radar V6.8</header>
 
 <div class="stats">
+  <div class="statBox">
+    <div class="statNum" id="statFriends">-</div>
+    <div class="statLabel">활성 친구</div>
+  </div>
 
-<div class="statBox">
-  <div class="statNum" id="statFriends">-</div>
-  <div class="statLabel">활성 친구</div>
-</div>
+  <div class="statBox">
+    <div class="statNum" id="statNew">-</div>
+    <div class="statLabel">NEW</div>
+  </div>
 
-<div class="statBox">
-  <div class="statNum" id="statNew">-</div>
-  <div class="statLabel">NEW</div>
-</div>
+  <div class="statBox">
+    <div class="statNum" id="statRead">-</div>
+    <div class="statLabel">READ</div>
+  </div>
 
-<div class="statBox">
-  <div class="statNum" id="statRead">-</div>
-  <div class="statLabel">READ</div>
-</div>
-
-<div class="statBox">
-  <div class="statNum" id="statArchived">-</div>
-  <div class="statLabel">ARCHIVED</div>
-</div>
-
+  <div class="statBox">
+    <div class="statNum" id="statArchived">-</div>
+    <div class="statLabel">ARCHIVED</div>
+  </div>
 </div>
 
 <div class="toolbar">
 
-<button class="btn active"
-onclick="setState('NEW',this)">
-NEW
-</button>
+  <button class="btn active" onclick="setState('NEW',this)">NEW</button>
+  <button class="btn" onclick="setState('READ',this)">READ</button>
+  <button class="btn" onclick="setState('ARCHIVED',this)">ARCHIVED</button>
+  <button class="btn" onclick="setState('ALL',this)">전체</button>
 
-<button class="btn"
-onclick="setState('READ',this)">
-READ
-</button>
+  <button class="btn" onclick="setGroup('한국')">한국</button>
+  <button class="btn" onclick="setGroup('해외')">해외</button>
+  <button class="btn" onclick="clearGroup()">그룹해제</button>
 
-<button class="btn"
-onclick="setState('ARCHIVED',this)">
-ARCHIVED
-</button>
+  <button class="btn" onclick="loadTracks()">새로고침</button>
+  <button class="scan" onclick="runScan()">수집 실행</button>
 
-<button class="btn"
-onclick="setState('ALL',this)">
-전체
-</button>
+  <button class="manage" onclick="toggleFriendPanel()">친구관리</button>
 
-<button class="btn"
-onclick="setGroup('한국')">
-한국
-</button>
+  <button class="youtube" onclick="scanAllYouTube(event)">
+    ▶ YouTube 전체확인
+  </button>
 
-<button class="btn"
-onclick="setGroup('해외')">
-해외
-</button>
+  <button class="youtubeRadar" onclick="toggleYouTubePanel()">
+    📺 YouTube NEW <span id="youtubeNewBadge">0</span>
+  </button>
 
-<button class="btn"
-onclick="clearGroup()">
-그룹해제
-</button>
-
-<button class="btn"
-onclick="loadTracks()">
-새로고침
-</button>
-
-<button class="scan"
-onclick="runScan()">
-수집 실행
-</button>
-
-<button class="manage"
-onclick="toggleFriendPanel()">
-친구관리
-</button>
-
-<button class="youtube"
-onclick="scanAllYouTube()">
-▶ YouTube 전체확인
-</button>
-
-<button class="manage"
-onclick="toggleLatestPanel()">
-최근수집
-</button>
-
-<button class="btn"
-onclick="runCleanup()">
-정리실행
-</button>
+  <button class="manage" onclick="toggleLatestPanel()">최근수집</button>
+  <button class="btn" onclick="runCleanup()">정리실행</button>
 
 </div>
 
 <div class="searchBar">
-
-<input
-id="trackSearch"
-placeholder="곡 제목 / 친구명 검색"
-style="min-width:260px"
-oninput="render()">
-
+  <input
+    id="trackSearch"
+    placeholder="곡 제목 / 친구명 검색"
+    style="min-width:260px"
+    oninput="render()">
 </div>
+
+
+<!-- =====================================================
+     친구관리
+     ===================================================== -->
 
 <div id="friendPanel">
 
-<h2>친구관리</h2>
+  <h2>친구관리</h2>
 
-<div class="friendForm">
+  <div class="friendForm">
 
-<input
-id="friendSearch"
-placeholder="친구 검색"
-oninput="loadFriends()"
-style="min-width:180px">
+    <input
+      id="friendSearch"
+      placeholder="친구 검색"
+      oninput="loadFriends()"
+      style="min-width:180px">
 
-<input
-id="newName"
-placeholder="친구 이름">
+    <input id="newName" placeholder="친구 이름">
 
-<input
-id="newUrl"
-placeholder="https://suno.com/@아이디"
-style="min-width:260px">
+    <input
+      id="newUrl"
+      placeholder="https://suno.com/@아이디"
+      style="min-width:260px">
 
-<select id="newGroup">
-<option value="한국">한국</option>
-<option value="해외">해외</option>
-</select>
+    <select id="newGroup">
+      <option value="한국">한국</option>
+      <option value="해외">해외</option>
+    </select>
 
-<button
-class="scan"
-onclick="addFriend()">
-친구 추가
-</button>
+    <button class="scan" onclick="addFriend()">친구 추가</button>
+    <button class="btn" onclick="loadFriends()">목록 새로고침</button>
 
-<button
-class="btn"
-onclick="loadFriends()">
-목록 새로고침
-</button>
+  </div>
+
+  <div id="friendCount" class="small">
+    친구목록 로딩중...
+  </div>
+
+  <div id="friendList"></div>
 
 </div>
 
-<div
-id="friendCount"
-class="small">
-친구목록 로딩중...
-</div>
 
-<div id="friendList"></div>
-
-</div>
+<!-- =====================================================
+     최근 SUNO 수집
+     ===================================================== -->
 
 <div id="latestPanel">
 
-<h2>최근수집 20곡</h2>
+  <h2>최근수집 20곡</h2>
 
-<div id="latestList"></div>
+  <div id="latestList"></div>
 
 </div>
 
-<div id="count">로딩중...</div>
 
+<!-- =====================================================
+     YouTube Radar
+     ===================================================== -->
+
+<div id="youtubePanel">
+
+  <div class="youtubeHeader">
+
+    <div>
+      <h2 style="margin:0 0 5px">
+        📺 YouTube 신영상 레이더
+      </h2>
+
+      <div class="small">
+        내가 구독한 YouTube 채널의 새 영상을 SUNO 신곡처럼 확인합니다.
+      </div>
+    </div>
+
+  </div>
+
+  <div class="youtubeConnection">
+
+    <span id="youtubeAuthStatus">
+      YouTube 연결 상태 확인중...
+    </span>
+
+    <button
+      class="youtube"
+      id="youtubeConnectBtn"
+      onclick="connectYouTube()">
+      Google / YouTube 연결
+    </button>
+
+    <button
+      class="btn"
+      id="youtubeLogoutBtn"
+      onclick="disconnectYouTube()"
+      style="display:none">
+      연결 해제
+    </button>
+
+  </div>
+
+  <div class="youtubeTabs">
+
+    <button
+      class="youtubeRadar"
+      onclick="syncYouTubeSubscriptions(this)">
+      구독채널 동기화
+    </button>
+
+    <button
+      class="scan"
+      onclick="scanYouTubeVideos(this)">
+      YouTube 수집
+    </button>
+
+    <button
+      class="btn active"
+      id="ytTabNEW"
+      onclick="setYouTubeState('NEW')">
+      NEW
+    </button>
+
+    <button
+      class="btn"
+      id="ytTabREAD"
+      onclick="setYouTubeState('READ')">
+      READ
+    </button>
+
+    <button
+      class="btn"
+      id="ytTabARCHIVED"
+      onclick="setYouTubeState('ARCHIVED')">
+      ARCHIVED
+    </button>
+
+    <button
+      class="btn"
+      id="ytTabALL"
+      onclick="setYouTubeState('ALL')">
+      전체
+    </button>
+
+  </div>
+
+  <div
+    class="searchBar"
+    style="padding:15px 0 10px;background:transparent">
+
+    <input
+      id="youtubeSearch"
+      placeholder="YouTube 영상 / 채널 검색"
+      style="min-width:260px"
+      oninput="renderYouTubeVideos()">
+
+  </div>
+
+  <div id="youtubeCount" class="youtubeCount">
+    YouTube 목록 로딩 전
+  </div>
+
+  <div id="youtubeVideoList"></div>
+
+</div>
+
+
+<div id="count">로딩중...</div>
 <div id="tracks"></div>
+
 
 <script>
 
 let allTracks = [];
-
 let currentState = "NEW";
-
 let currentGroup = "ALL";
 
 let youtubeCache = {};
+let currentFriendList = [];
+
+let youtubeVideos = [];
+let youtubeState = "NEW";
 
 
 // ======================================================
-// 시간 표시
+// 시간
 // ======================================================
 
 function timeAgo(dateText){
@@ -464,42 +535,46 @@ function timeAgo(dateText){
 
 
 // ======================================================
-// 통계
+// SUNO 통계
 // ======================================================
 
 async function loadStats(){
 
-  const res = await fetch("/stats");
+  try{
 
-  const s = await res.json();
+    const res = await fetch("/stats");
+    const s = await res.json();
 
-  document.getElementById("statFriends").innerText =
-    s.friends ?? 0;
+    document.getElementById("statFriends").innerText =
+      s.friends ?? 0;
 
-  document.getElementById("statNew").innerText =
-    s.new ?? 0;
+    document.getElementById("statNew").innerText =
+      s.new ?? 0;
 
-  document.getElementById("statRead").innerText =
-    s.read ?? 0;
+    document.getElementById("statRead").innerText =
+      s.read ?? 0;
 
-  document.getElementById("statArchived").innerText =
-    s.archived ?? 0;
+    document.getElementById("statArchived").innerText =
+      s.archived ?? 0;
+
+  }catch(e){
+
+    console.log("stats fail",e);
+  }
 }
 
 
 // ======================================================
-// 상태
+// SUNO 상태
 // ======================================================
 
-function setState(state, btn){
+function setState(state,btn){
 
   currentState = state;
 
   document
     .querySelectorAll(".toolbar .btn")
-    .forEach(
-      b => b.classList.remove("active")
-    );
+    .forEach(b => b.classList.remove("active"));
 
   if(btn)
     btn.classList.add("active");
@@ -509,27 +584,24 @@ function setState(state, btn){
 
 
 // ======================================================
-// 그룹
+// SUNO 그룹
 // ======================================================
 
 function setGroup(group){
 
   currentGroup = group;
-
   render();
 }
-
 
 function clearGroup(){
 
   currentGroup = "ALL";
-
   render();
 }
 
 
 // ======================================================
-// 곡
+// SUNO 곡 로딩
 // ======================================================
 
 async function loadTracks(){
@@ -539,28 +611,29 @@ async function loadTracks(){
 
   let url = "/tracks";
 
-  if(currentState !== "ALL"){
+  if(currentState !== "ALL")
+    url += "?state=" + currentState;
 
-    url +=
-      "?state=" +
-      currentState;
+  try{
 
+    const res = await fetch(url);
+
+    allTracks = await res.json();
+
+    await loadStats();
+
+    render();
+
+  }catch(e){
+
+    document.getElementById("count").innerText =
+      "곡 목록 로딩 실패";
   }
-
-  const res =
-    await fetch(url);
-
-  allTracks =
-    await res.json();
-
-  await loadStats();
-
-  render();
 }
 
 
 // ======================================================
-// 상태 배지
+// 배지
 // ======================================================
 
 function badgeClass(state){
@@ -579,32 +652,26 @@ function badgeClass(state){
 
 
 // ======================================================
-// 곡 듣기
+// SUNO 듣기
 // ======================================================
 
-async function listenTrack(id, url){
+async function listenTrack(id,url){
 
-  await fetch(
-    "/mark-read/" + id
-  );
+  await fetch("/mark-read/" + id);
 
-  window.open(
-    url,
-    "_blank"
-  );
+  window.open(url,"_blank");
 
   await loadTracks();
 }
 
 
 // ======================================================
-// 곡 표시
+// SUNO 표시
 // ======================================================
 
 function render(){
 
-  let data =
-    allTracks;
+  let data = allTracks;
 
   const q =
     document
@@ -617,10 +684,8 @@ function render(){
 
     data =
       data.filter(
-        t =>
-          t.group_name === currentGroup
+        t => t.group_name === currentGroup
       );
-
   }
 
   if(q){
@@ -628,7 +693,6 @@ function render(){
     data =
       data.filter(
         t =>
-
           (t.title || "")
             .toLowerCase()
             .includes(q)
@@ -638,9 +702,7 @@ function render(){
           (t.friend_name || "")
             .toLowerCase()
             .includes(q)
-
       );
-
   }
 
   document.getElementById("count").innerText =
@@ -664,10 +726,13 @@ function render(){
         <div class="friend">
 
           👤
+
           <a
             href="${t.profile_url}"
             target="_blank">
+
             ${t.friend_name}
+
           </a>
 
         </div>
@@ -676,10 +741,10 @@ function render(){
 
           🌐 ${t.group_name || "-"}
 
-          ·
+          · 🕒
 
-          🕒
           ${timeAgo(
+            t.public_at ||
             t.created_at ||
             t.detected_at
           )}
@@ -688,10 +753,7 @@ function render(){
 
         <button
           class="listen"
-          onclick="listenTrack(
-            ${t.id},
-            '${t.track_url}'
-          )">
+          onclick='listenTrack(${t.id},${JSON.stringify(t.track_url)})'>
 
           듣기
 
@@ -704,7 +766,7 @@ function render(){
 
 
 // ======================================================
-// 수집 실행
+// SUNO 전체 수집
 // ======================================================
 
 async function runScan(){
@@ -712,40 +774,47 @@ async function runScan(){
   document.getElementById("count").innerText =
     "수집 실행중...";
 
-  const res =
-    await fetch("/scan");
+  try{
 
-  const result =
-    await res.json();
+    const res = await fetch("/scan");
+    const result = await res.json();
 
-  alert(
-    `수집 완료\n친구: ${result.friends}명\n신규 저장: ${result.inserted}곡`
-  );
+    alert(
+      `수집 완료\n친구: ${result.friends ?? 0}명\n신규 저장: ${result.inserted ?? 0}곡`
+    );
 
-  await loadTracks();
+    await loadTracks();
+    await loadLatest();
 
-  await loadLatest();
+  }catch(e){
+
+    alert("SUNO 수집 실패");
+  }
 }
 
 
 // ======================================================
-// 정리
+// SUNO 정리
 // ======================================================
 
 async function runCleanup(){
 
-  const res =
-    await fetch("/cleanup");
+  try{
 
-  const result =
-    await res.json();
+    const res = await fetch("/cleanup");
+    const result = await res.json();
 
-  alert(
-    "정리 완료: " +
-    JSON.stringify(result)
-  );
+    alert(
+      "정리 완료: " +
+      JSON.stringify(result)
+    );
 
-  await loadTracks();
+    await loadTracks();
+
+  }catch(e){
+
+    alert("정리 실패");
+  }
 }
 
 
@@ -756,20 +825,15 @@ async function runCleanup(){
 function toggleFriendPanel(){
 
   const panel =
-    document.getElementById(
-      "friendPanel"
-    );
+    document.getElementById("friendPanel");
 
   panel.style.display =
     panel.style.display === "block"
       ? "none"
       : "block";
 
-  if(
-    panel.style.display === "block"
-  ){
+  if(panel.style.display === "block")
     loadFriends();
-  }
 }
 
 
@@ -788,20 +852,20 @@ async function loadFriends(){
 
   const url =
     q
-    ?
-    "/friend-search?q=" +
-      encodeURIComponent(q)
-    :
-    "/friends";
+      ? "/friend-search?q=" + encodeURIComponent(q)
+      : "/friends";
 
-  const res =
-    await fetch(url);
+  const res = await fetch(url);
 
-  const friends =
-    await res.json();
+  const friends = await res.json();
+
+  currentFriendList = friends;
+  window.currentFriendList = friends;
 
   document.getElementById("friendCount").innerText =
-    `친구 ${friends.length}명 / 활성 ${friends.filter(f => f.active).length}명`;
+    `친구 ${friends.length}명 / 활성 ${
+      friends.filter(f => f.active).length
+    }명`;
 
   document.getElementById("friendList").innerHTML =
     friends.map(f => {
@@ -810,10 +874,10 @@ async function loadFriends(){
         youtubeCache[f.id];
 
       let ytButtonText =
-        "▶ YouTube";
+        "YouTube 확인";
 
       let ytClass =
-        "youtube";
+        "btn";
 
       let ytStatus =
         "";
@@ -837,13 +901,11 @@ async function loadFriends(){
             "YouTube 없음";
 
           ytClass =
-            "youtube youtubeNone";
+            "youtubeNone";
 
           ytStatus =
             "공개 YouTube 링크 없음";
-
         }
-
       }
 
       return `
@@ -857,10 +919,7 @@ async function loadFriends(){
             <a
               href="${f.profile_url}"
               target="_blank"
-              style="
-                color:white;
-                text-decoration:none;
-              ">
+              style="color:white;text-decoration:none">
 
               ${f.friend_name}
               (${f.group_name})
@@ -871,26 +930,14 @@ async function loadFriends(){
 
           <div class="small">
 
-            <a
-              href="${f.profile_url}"
-              target="_blank"
-              style="
-                color:#aaa;
-                text-decoration:none;
-              ">
-
-              ${f.profile_url}
-
-            </a>
+            ${f.profile_url}
 
           </div>
 
           ${
             ytStatus
-            ?
-            `<div class="youtubeStatus">${ytStatus}</div>`
-            :
-            ""
+              ? `<div class="youtubeStatus">${ytStatus}</div>`
+              : ""
           }
 
         </div>
@@ -899,28 +946,17 @@ async function loadFriends(){
 
           <button
             class="${ytClass}"
-            onclick="checkFriendYouTube(
-              ${f.id},
-              this
-            )">
+            onclick="checkFriendYouTube(${f.id},this)">
 
             ${ytButtonText}
 
           </button>
 
           <button
-            class="${
-              f.active
-              ? "onbtn"
-              : "offbtn"
-            }"
+            class="${f.active ? "onbtn" : "offbtn"}"
             onclick="toggleFriend(${f.id})">
 
-            ${
-              f.active
-              ? "ON"
-              : "OFF"
-            }
+            ${f.active ? "ON" : "OFF"}
 
           </button>
 
@@ -943,10 +979,10 @@ async function loadFriends(){
 
 
 // ======================================================
-// 친구 1명 YouTube 확인
+// 친구 1명 YouTube 링크 확인
 // ======================================================
 
-async function checkFriendYouTube(id, btn){
+async function checkFriendYouTube(id,btn){
 
   if(
     youtubeCache[id] &&
@@ -965,9 +1001,7 @@ async function checkFriendYouTube(id, btn){
     btn.innerText;
 
   btn.disabled = true;
-
-  btn.innerText =
-    "확인중...";
+  btn.innerText = "확인중...";
 
   try{
 
@@ -987,9 +1021,8 @@ async function checkFriendYouTube(id, btn){
       btn.innerText =
         "▶ YouTube 있음";
 
-      btn.classList.add(
-        "youtubeFound"
-      );
+      btn.className =
+        "youtube youtubeFound";
 
       btn.disabled =
         false;
@@ -1006,61 +1039,52 @@ async function checkFriendYouTube(id, btn){
       btn.innerText =
         "YouTube 없음";
 
-      btn.classList.add(
-        "youtubeNone"
-      );
+      btn.className =
+        "youtubeNone";
 
       btn.disabled =
         false;
-
     }
 
   }catch(e){
 
-    alert(
-      "YouTube 확인 실패"
-    );
+    alert("YouTube 확인 실패");
 
     btn.innerText =
       originalText;
 
     btn.disabled =
       false;
-
   }
 }
 
 
 // ======================================================
-// 활성 친구 전체 YouTube 확인
+// SUNO 친구 전체 YouTube 링크 확인
 // ======================================================
 
-async function scanAllYouTube(){
+async function scanAllYouTube(ev){
 
   if(
     !confirm(
-      "활성 친구 전체의 YouTube 링크를 확인할까요?\n친구 수가 많으면 시간이 조금 걸릴 수 있습니다."
+      "활성 SUNO 친구 전체의 YouTube 링크를 확인할까요?\n시간이 오래 걸릴 수 있습니다."
     )
   ){
     return;
   }
 
   const button =
-    event?.target;
+    ev?.target;
 
   const originalText =
     button
-    ? button.innerText
-    : "";
+      ? button.innerText
+      : "";
 
   if(button){
 
-    button.disabled =
-      true;
-
-    button.innerText =
-      "YouTube 확인중...";
-
+    button.disabled = true;
+    button.innerText = "YouTube 확인중...";
   }
 
   try{
@@ -1075,42 +1099,32 @@ async function scanAllYouTube(){
 
     if(!result.ok){
 
-      alert(
-        "YouTube 전체 확인 실패"
-      );
-
+      alert("YouTube 전체 확인 실패");
       return;
-
     }
 
-    if(
-      Array.isArray(
-        result.results
-      )
-    ){
+    if(Array.isArray(result.results)){
 
-      result.results.forEach(
-        r => {
+      result.results.forEach(r => {
 
-          const friend =
-            window.currentFriendList
-            ?.find(
-              f =>
-                f.friend_name ===
-                r.friend
-            );
+        if(r.id){
 
-          if(friend){
+          youtubeCache[r.id] = r;
 
-            youtubeCache[
-              friend.id
-            ] = r;
-
-          }
-
+          return;
         }
-      );
 
+        const friend =
+          currentFriendList.find(
+            f =>
+              f.friend_name ===
+              r.friend
+          );
+
+        if(friend)
+          youtubeCache[friend.id] = r;
+
+      });
     }
 
     alert(
@@ -1129,14 +1143,9 @@ async function scanAllYouTube(){
 
     if(button){
 
-      button.disabled =
-        false;
-
-      button.innerText =
-        originalText;
-
+      button.disabled = false;
+      button.innerText = originalText;
     }
-
   }
 }
 
@@ -1164,10 +1173,7 @@ async function addFriend(){
       .getElementById("newGroup")
       .value;
 
-  if(
-    !name ||
-    !url
-  ){
+  if(!name || !url){
 
     alert(
       "친구 이름과 URL을 입력하세요."
@@ -1198,21 +1204,13 @@ async function addFriend(){
     return;
   }
 
-  document
-    .getElementById("newName")
-    .value = "";
-
-  document
-    .getElementById("newUrl")
-    .value = "";
+  document.getElementById("newName").value = "";
+  document.getElementById("newUrl").value = "";
 
   await loadFriends();
-
   await loadStats();
 
-  alert(
-    "친구 추가 완료"
-  );
+  alert("친구 추가 완료");
 }
 
 
@@ -1227,7 +1225,6 @@ async function toggleFriend(id){
   );
 
   await loadFriends();
-
   await loadStats();
 }
 
@@ -1239,9 +1236,7 @@ async function toggleFriend(id){
 async function deleteFriend(id){
 
   if(
-    !confirm(
-      "정말 삭제할까요?"
-    )
+    !confirm("정말 삭제할까요?")
   ){
     return;
   }
@@ -1253,13 +1248,12 @@ async function deleteFriend(id){
   delete youtubeCache[id];
 
   await loadFriends();
-
   await loadStats();
 }
 
 
 // ======================================================
-// 최근수집 패널
+// 최근수집
 // ======================================================
 
 function toggleLatestPanel(){
@@ -1274,19 +1268,10 @@ function toggleLatestPanel(){
       ? "none"
       : "block";
 
-  if(
-    panel.style.display === "block"
-  ){
-
+  if(panel.style.display === "block")
     loadLatest();
-
-  }
 }
 
-
-// ======================================================
-// 최근수집
-// ======================================================
 
 async function loadLatest(){
 
@@ -1304,9 +1289,7 @@ async function loadLatest(){
         <div>
 
           <div class="friendName">
-
             ${t.title || "Suno song"}
-
           </div>
 
           <div class="small">
@@ -1316,6 +1299,7 @@ async function loadLatest(){
             ·
 
             ${timeAgo(
+              t.public_at ||
               t.detected_at ||
               t.created_at
             )}
@@ -1344,12 +1328,582 @@ async function loadLatest(){
 
 
 // ======================================================
-// 시작
+// YouTube 계정 연결 상태
+// ======================================================
+
+async function loadYouTubeAuthStatus(){
+
+  const status =
+    document.getElementById(
+      "youtubeAuthStatus"
+    );
+
+  const connectBtn =
+    document.getElementById(
+      "youtubeConnectBtn"
+    );
+
+  const logoutBtn =
+    document.getElementById(
+      "youtubeLogoutBtn"
+    );
+
+  try{
+
+    const res =
+      await fetch(
+        "/youtube/auth/status"
+      );
+
+    const data =
+      await res.json();
+
+    if(data.connected){
+
+      status.innerHTML =
+        `<span class="connected">● YouTube 연결됨</span>`;
+
+      connectBtn.style.display =
+        "none";
+
+      logoutBtn.style.display =
+        "inline-block";
+
+    }else{
+
+      status.innerHTML =
+        `<span class="disconnected">● YouTube 연결 필요</span>`;
+
+      connectBtn.style.display =
+        "inline-block";
+
+      logoutBtn.style.display =
+        "none";
+    }
+
+  }catch(e){
+
+    status.innerHTML =
+      `<span class="disconnected">● 연결 상태 확인 실패</span>`;
+  }
+}
+
+
+function connectYouTube(){
+
+  window.location.href =
+    "/auth/youtube";
+}
+
+
+async function disconnectYouTube(){
+
+  if(
+    !confirm(
+      "YouTube 연결을 해제할까요?"
+    )
+  ){
+    return;
+  }
+
+  try{
+
+    await fetch(
+      "/youtube/logout"
+    );
+
+    await loadYouTubeAuthStatus();
+
+    alert(
+      "YouTube 연결이 해제되었습니다."
+    );
+
+  }catch(e){
+
+    alert(
+      "YouTube 연결 해제 실패"
+    );
+  }
+}
+
+
+// ======================================================
+// YouTube Radar 열기
+// ======================================================
+
+function toggleYouTubePanel(){
+
+  const panel =
+    document.getElementById(
+      "youtubePanel"
+    );
+
+  panel.style.display =
+    panel.style.display === "block"
+      ? "none"
+      : "block";
+
+  if(
+    panel.style.display ===
+    "block"
+  ){
+
+    loadYouTubeAuthStatus();
+    loadYouTubeVideos();
+  }
+}
+
+
+// ======================================================
+// YouTube 상태
+// ======================================================
+
+function setYouTubeState(state){
+
+  youtubeState =
+    state;
+
+  [
+    "NEW",
+    "READ",
+    "ARCHIVED",
+    "ALL"
+  ].forEach(s => {
+
+    const b =
+      document.getElementById(
+        "ytTab" + s
+      );
+
+    if(b)
+      b.classList.toggle(
+        "active",
+        s === state
+      );
+  });
+
+  loadYouTubeVideos();
+}
+
+
+// ======================================================
+// YouTube 리스트
+// ======================================================
+
+async function loadYouTubeVideos(){
+
+  const count =
+    document.getElementById(
+      "youtubeCount"
+    );
+
+  count.innerText =
+    "YouTube 영상 로딩중...";
+
+  let url =
+    "/youtube/videos";
+
+  if(
+    youtubeState !==
+    "ALL"
+  ){
+
+    url +=
+      "?state=" +
+      encodeURIComponent(
+        youtubeState
+      );
+  }
+
+  try{
+
+    const res =
+      await fetch(url);
+
+    if(!res.ok)
+      throw new Error(
+        "HTTP " +
+        res.status
+      );
+
+    youtubeVideos =
+      await res.json();
+
+    if(
+      !Array.isArray(
+        youtubeVideos
+      )
+    ){
+
+      youtubeVideos =
+        [];
+    }
+
+    await updateYouTubeBadge();
+
+    renderYouTubeVideos();
+
+  }catch(e){
+
+    youtubeVideos = [];
+
+    count.innerText =
+      "YouTube 영상 로딩 실패";
+
+    document.getElementById(
+      "youtubeVideoList"
+    ).innerHTML = "";
+  }
+}
+
+
+// ======================================================
+// YouTube NEW 숫자
+// ======================================================
+
+async function updateYouTubeBadge(){
+
+  try{
+
+    const res =
+      await fetch(
+        "/youtube/stats"
+      );
+
+    const data =
+      await res.json();
+
+    document.getElementById(
+      "youtubeNewBadge"
+    ).innerText =
+      data.new ?? 0;
+
+  }catch(e){
+
+    console.log(
+      "YouTube stats fail"
+    );
+  }
+}
+
+
+// ======================================================
+// YouTube 영상 표시
+// ======================================================
+
+function renderYouTubeVideos(){
+
+  const q =
+    document
+      .getElementById(
+        "youtubeSearch"
+      )
+      ?.value
+      ?.trim()
+      ?.toLowerCase()
+    || "";
+
+  let data =
+    youtubeVideos;
+
+  if(q){
+
+    data =
+      data.filter(v =>
+
+        (v.title || "")
+          .toLowerCase()
+          .includes(q)
+
+        ||
+
+        (v.channel_title || "")
+          .toLowerCase()
+          .includes(q)
+      );
+  }
+
+  document.getElementById(
+    "youtubeCount"
+  ).innerText =
+    `YouTube 상태 ${youtubeState} / 표시 ${data.length}개`;
+
+  document.getElementById(
+    "youtubeVideoList"
+  ).innerHTML =
+    data.map(v => {
+
+      const thumb =
+        v.thumbnail_url || "";
+
+      const url =
+        v.video_url ||
+        (
+          v.video_id
+            ? "https://www.youtube.com/watch?v=" +
+              v.video_id
+            : "#"
+        );
+
+      return `
+
+      <div class="youtubeVideoRow">
+
+        ${
+          thumb
+            ? `<img class="youtubeThumb" src="${thumb}" alt="">`
+            : `<div class="youtubeThumb"></div>`
+        }
+
+        <div class="youtubeVideoInfo">
+
+          <div class="youtubeVideoTitle">
+
+            <span class="badge ${badgeClass(v.state)}">
+              ${v.state || "NEW"}
+            </span>
+
+            ${v.title || "YouTube video"}
+
+          </div>
+
+          <div class="small">
+
+            📺 ${v.channel_title || "-"}
+
+            · 🕒
+
+            ${timeAgo(
+              v.published_at ||
+              v.detected_at
+            )}
+
+          </div>
+
+          <div class="youtubeVideoActions">
+
+            <button
+              class="youtube"
+              onclick='openYouTubeVideo(${v.id},${JSON.stringify(url)})'>
+
+              ▶ 영상보기
+
+            </button>
+
+          </div>
+
+        </div>
+
+      </div>
+
+      `;
+
+    }).join("");
+}
+
+
+// ======================================================
+// YouTube 영상 열기 → READ
+// ======================================================
+
+async function openYouTubeVideo(id,url){
+
+  try{
+
+    await fetch(
+      "/youtube/mark-read/" +
+      id
+    );
+
+  }catch(e){
+
+    console.log(
+      "youtube mark read fail"
+    );
+  }
+
+  window.open(
+    url,
+    "_blank"
+  );
+
+  await loadYouTubeVideos();
+}
+
+
+// ======================================================
+// YouTube 구독목록 동기화
+// ======================================================
+
+async function syncYouTubeSubscriptions(btn){
+
+  const original =
+    btn.innerText;
+
+  btn.disabled =
+    true;
+
+  btn.innerText =
+    "동기화중...";
+
+  try{
+
+    const res =
+      await fetch(
+        "/youtube/subscriptions/sync"
+      );
+
+    const result =
+      await res.json();
+
+    if(!res.ok || !result.ok){
+
+      throw new Error(
+        result.error ||
+        "동기화 실패"
+      );
+    }
+
+    alert(
+      `YouTube 구독채널 동기화 완료\n구독 채널: ${result.subscriptions ?? 0}개`
+    );
+
+    await loadYouTubeVideos();
+
+  }catch(e){
+
+    alert(
+      "YouTube 구독채널 동기화 실패\n\n" +
+      e.message +
+      "\n\nYouTube 계정 연결 여부를 확인하세요."
+    );
+
+  }finally{
+
+    btn.disabled =
+      false;
+
+    btn.innerText =
+      original;
+  }
+}
+
+
+// ======================================================
+// YouTube 신영상 수집
+// ======================================================
+
+async function scanYouTubeVideos(btn){
+
+  const original =
+    btn.innerText;
+
+  btn.disabled =
+    true;
+
+  btn.innerText =
+    "YouTube 수집중...";
+
+  try{
+
+    const res =
+      await fetch(
+        "/youtube/scan"
+      );
+
+    const result =
+      await res.json();
+
+    if(!res.ok || !result.ok){
+
+      throw new Error(
+        result.error ||
+        "YouTube 수집 실패"
+      );
+    }
+
+    alert(
+      `YouTube 수집 완료\n구독 채널: ${result.channels ?? 0}개\n신규 영상: ${result.inserted ?? 0}개`
+    );
+
+    youtubeState =
+      "NEW";
+
+    [
+      "NEW",
+      "READ",
+      "ARCHIVED",
+      "ALL"
+    ].forEach(s => {
+
+      const b =
+        document.getElementById(
+          "ytTab" + s
+        );
+
+      if(b)
+        b.classList.toggle(
+          "active",
+          s === "NEW"
+        );
+    });
+
+    await loadYouTubeVideos();
+
+  }catch(e){
+
+    alert(
+      "YouTube 영상 수집 실패\n\n" +
+      e.message
+    );
+
+  }finally{
+
+    btn.disabled =
+      false;
+
+    btn.innerText =
+      original;
+  }
+}
+
+
+// ======================================================
+// 초기 실행
 // ======================================================
 
 loadTracks();
-
 loadStats();
+updateYouTubeBadge();
+
+const params =
+  new URLSearchParams(
+    window.location.search
+  );
+
+if(
+  params.get("youtube") ===
+  "connected"
+){
+
+  setTimeout(() => {
+
+    alert(
+      "YouTube 계정 연결 완료"
+    );
+
+    const panel =
+      document.getElementById(
+        "youtubePanel"
+      );
+
+    panel.style.display =
+      "block";
+
+    loadYouTubeAuthStatus();
+
+  },300);
+}
 
 </script>
 
