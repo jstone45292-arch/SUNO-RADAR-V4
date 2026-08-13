@@ -21,8 +21,109 @@ const NEW_LIMIT_DAYS = 7;
 const RECENT_LIMIT_DAYS = 14;
 const SONG_SCAN_LIMIT = 5;
 
-function extractSongIds(html) {
+// ======================================================
+// V5.6 - Suno 프로필의 공개 YouTube 링크 검색
+// ======================================================
 
+const YOUTUBE_HOST_RE =
+  /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com|youtu\.be)\/[^"'<>\s\\]+/gi;
+
+function normalizeExternalUrl(raw) {
+  if (!raw) return null;
+
+  let url = String(raw)
+    .replace(/\\u0026/g, "&")
+    .replace(/\\\//g, "/")
+    .replace(/&amp;/g, "&")
+    .trim();
+
+  if (!/^https?:\/\//i.test(url)) {
+    url = "https://" + url;
+  }
+
+  try {
+    const u = new URL(url);
+
+    const allowedHosts = [
+      "youtube.com",
+      "www.youtube.com",
+      "m.youtube.com",
+      "youtu.be"
+    ];
+
+    if (!allowedHosts.includes(u.hostname)) {
+      return null;
+    }
+
+    return u.toString();
+  } catch {
+    return null;
+  }
+}
+
+function extractYouTubeUrls(html) {
+  const found = new Set();
+
+  const decoded = String(html || "")
+    .replace(/\\u0026/g, "&")
+    .replace(/\\\//g, "/")
+    .replace(/&amp;/g, "&");
+
+  const matches = decoded.match(YOUTUBE_HOST_RE) || [];
+
+  for (const raw of matches) {
+    const url = normalizeExternalUrl(raw);
+
+    if (url) {
+      found.add(url);
+    }
+  }
+
+  return [...found];
+}
+
+async function getFriendYouTube(friend) {
+  if (!friend || !friend.profile_url) {
+    return {
+      ok: false,
+      youtube_url: null,
+      urls: [],
+      error: "profile_url_not_found"
+    };
+  }
+
+  try {
+    const { data: html } = await axios.get(friend.profile_url, {
+      headers,
+      timeout: 20000
+    });
+
+    const urls = extractYouTubeUrls(html);
+
+    return {
+      ok: true,
+      friend: friend.friend_name,
+      profile_url: friend.profile_url,
+      youtube_url: urls[0] || null,
+      urls
+    };
+  } catch (e) {
+    return {
+      ok: false,
+      friend: friend.friend_name,
+      profile_url: friend.profile_url,
+      youtube_url: null,
+      urls: [],
+      error: e.message
+    };
+  }
+}
+
+// ======================================================
+// 기존 V5.5 곡 ID 추출
+// ======================================================
+
+function extractSongIds(html) {
   const ids = new Set();
 
   let m;
@@ -47,22 +148,25 @@ function extractSongIds(html) {
 
   const re4 = /"id":"([a-f0-9-]{36})"/g;
 
-while ((m = re4.exec(html)) !== null) {
-  ids.add(m[1]);
-}
+  while ((m = re4.exec(html)) !== null) {
+    ids.add(m[1]);
+  }
 
-const re5 = /\\"id\\":\\"([a-f0-9-]{36})\\"/g;
+  const re5 = /\\"id\\":\\"([a-f0-9-]{36})\\"/g;
 
-while ((m = re5.exec(html)) !== null) {
-  ids.add(m[1]);
-}
-  
+  while ((m = re5.exec(html)) !== null) {
+    ids.add(m[1]);
+  }
+
   return [...ids];
 }
 
 function classifyTrack(publicAt) {
   if (!publicAt) {
-    return { state: "ARCHIVED", oldReason: "public_at_not_found" };
+    return {
+      state: "ARCHIVED",
+      oldReason: "public_at_not_found"
+    };
   }
 
   const ageDays =
@@ -70,11 +174,17 @@ function classifyTrack(publicAt) {
     (1000 * 60 * 60 * 24);
 
   if (ageDays <= NEW_LIMIT_DAYS) {
-    return { state: "NEW", oldReason: null };
+    return {
+      state: "NEW",
+      oldReason: null
+    };
   }
 
   if (ageDays <= RECENT_LIMIT_DAYS) {
-    return { state: "RECENT", oldReason: null };
+    return {
+      state: "RECENT",
+      oldReason: null
+    };
   }
 
   return {
@@ -98,11 +208,16 @@ async function getSongInfo(songUrl) {
     );
 
     if (og) {
-      title = og[1].replace(" | Suno", "").trim();
+      title = og[1]
+        .replace(" | Suno", "")
+        .trim();
     }
 
-    const created1 = data.match(/"created_at"\s*:\s*"([^"]+)"/i);
-    const created2 = data.match(/\\"created_at\\"\s*:\s*\\"([^\\"]+)\\"/i);
+    const created1 =
+      data.match(/"created_at"\s*:\s*"([^"]+)"/i);
+
+    const created2 =
+      data.match(/\\"created_at\\"\s*:\s*\\"([^\\"]+)\\"/i);
 
     if (created1) {
       publicAt = created1[1];
@@ -110,44 +225,71 @@ async function getSongInfo(songUrl) {
       publicAt = created2[1];
     }
   } catch (e) {
-    console.log("song info fail:", songUrl, e.message);
+    console.log(
+      "song info fail:",
+      songUrl,
+      e.message
+    );
   }
 
-  return { title, publicAt };
+  return {
+    title,
+    publicAt
+  };
 }
+
+// ======================================================
+// 기존 정리 기능
+// ======================================================
 
 async function cleanupTracks() {
   const now = new Date();
 
   const readLimit = new Date(
-    now.getTime() - 3 * 24 * 60 * 60 * 1000
+    now.getTime() -
+      3 * 24 * 60 * 60 * 1000
   ).toISOString();
 
   const archiveLimit = new Date(
-    now.getTime() - 7 * 24 * 60 * 60 * 1000
+    now.getTime() -
+      7 * 24 * 60 * 60 * 1000
   ).toISOString();
 
-  const { error: archiveError } = await supabase
-    .from("tracks")
-    .update({
-      state: "ARCHIVED",
-      archived_at: now.toISOString()
-    })
-    .eq("state", "READ")
-    .lt("read_at", readLimit);
+  const { error: archiveError } =
+    await supabase
+      .from("tracks")
+      .update({
+        state: "ARCHIVED",
+        archived_at: now.toISOString()
+      })
+      .eq("state", "READ")
+      .lt("read_at", readLimit);
 
-  const { error: deleteError } = await supabase
-    .from("tracks")
-    .delete()
-    .eq("state", "ARCHIVED")
-    .lt("archived_at", archiveLimit);
+  const { error: deleteError } =
+    await supabase
+      .from("tracks")
+      .delete()
+      .eq("state", "ARCHIVED")
+      .lt("archived_at", archiveLimit);
 
   return {
     ok: !archiveError && !deleteError,
-    archiveError: archiveError ? archiveError.message : null,
-    deleteError: deleteError ? deleteError.message : null
+
+    archiveError:
+      archiveError
+        ? archiveError.message
+        : null,
+
+    deleteError:
+      deleteError
+        ? deleteError.message
+        : null
   };
 }
+
+// ======================================================
+// 친구 1명 곡 수집
+// ======================================================
 
 async function scanFriend(friend) {
   let inserted = 0;
@@ -157,28 +299,37 @@ async function scanFriend(friend) {
   let skipped = 0;
 
   try {
-    const { data: html } = await axios.get(friend.profile_url, {
-      headers,
-      timeout: 20000
-    });
+    const { data: html } =
+      await axios.get(friend.profile_url, {
+        headers,
+        timeout: 20000
+      });
 
-    const ids = extractSongIds(html).slice(0, SONG_SCAN_LIMIT);
+    const ids =
+      extractSongIds(html)
+        .slice(0, SONG_SCAN_LIMIT);
 
     for (const id of ids) {
-      const { data: exists } = await supabase
-        .from("tracks")
-        .select("id")
-        .eq("track_key", id)
-        .maybeSingle();
+      const { data: exists } =
+        await supabase
+          .from("tracks")
+          .select("id")
+          .eq("track_key", id)
+          .maybeSingle();
 
       if (exists) {
         skipped++;
         continue;
       }
 
-      const trackUrl = `https://suno.com/song/${id}`;
-      const info = await getSongInfo(trackUrl);
-      const judged = classifyTrack(info.publicAt);
+      const trackUrl =
+        `https://suno.com/song/${id}`;
+
+      const info =
+        await getSongInfo(trackUrl);
+
+      const judged =
+        classifyTrack(info.publicAt);
 
       const row = {
         track_key: id,
@@ -190,29 +341,46 @@ async function scanFriend(friend) {
         state: judged.state,
         public_at: info.publicAt,
         old_reason: judged.oldReason,
-        detected_at: new Date().toISOString()
+        detected_at:
+          new Date().toISOString()
       };
 
       if (judged.state === "ARCHIVED") {
-        row.archived_at = new Date().toISOString();
+        row.archived_at =
+          new Date().toISOString();
+
         archivedOld++;
       }
 
-      if (judged.state === "NEW") newCount++;
-      if (judged.state === "RECENT") recentCount++;
+      if (judged.state === "NEW") {
+        newCount++;
+      }
 
-      const { error: insertError } = await supabase
-        .from("tracks")
-        .insert(row);
+      if (judged.state === "RECENT") {
+        recentCount++;
+      }
+
+      const { error: insertError } =
+        await supabase
+          .from("tracks")
+          .insert(row);
 
       if (!insertError) {
         inserted++;
       } else {
-        console.log("insert fail:", friend.friend_name, insertError.message);
+        console.log(
+          "insert fail:",
+          friend.friend_name,
+          insertError.message
+        );
       }
     }
   } catch (e) {
-    console.log("scan fail:", friend.friend_name, e.message);
+    console.log(
+      "scan fail:",
+      friend.friend_name,
+      e.message
+    );
   }
 
   return {
@@ -225,16 +393,25 @@ async function scanFriend(friend) {
   };
 }
 
+// ======================================================
+// 전체 수집
+// ======================================================
+
 async function scanOnce() {
   await cleanupTracks();
 
-  const { data: friends, error } = await supabase
-    .from("friends")
-    .select("*")
-    .eq("active", true)
-    .order("id", { ascending: true });
+  const { data: friends, error } =
+    await supabase
+      .from("friends")
+      .select("*")
+      .eq("active", true)
+      .order("id", {
+        ascending: true
+      });
 
-  if (error) throw error;
+  if (error) {
+    throw error;
+  }
 
   let inserted = 0;
   let newCount = 0;
@@ -243,7 +420,8 @@ async function scanOnce() {
   let skipped = 0;
 
   for (const friend of friends) {
-    const r = await scanFriend(friend);
+    const r =
+      await scanFriend(friend);
 
     inserted += r.inserted;
     newCount += r.new;
@@ -260,271 +438,770 @@ async function scanOnce() {
     recent: recentCount,
     archivedOld,
     skipped,
-    scanLimitPerFriend: SONG_SCAN_LIMIT,
-    newLimitDays: NEW_LIMIT_DAYS,
-    recentLimitDays: RECENT_LIMIT_DAYS
+
+    scanLimitPerFriend:
+      SONG_SCAN_LIMIT,
+
+    newLimitDays:
+      NEW_LIMIT_DAYS,
+
+    recentLimitDays:
+      RECENT_LIMIT_DAYS
   };
 }
 
+// ======================================================
+// 기본
+// ======================================================
+
 app.get("/", (req, res) => {
-  res.sendFile(__dirname + "/index.html");
+  res.sendFile(
+    __dirname + "/index.html"
+  );
 });
+
+// ======================================================
+// 친구
+// ======================================================
 
 app.get("/friends", async (req, res) => {
-  const { data, error } = await supabase
-    .from("friends")
-    .select("*")
-    .order("id", { ascending: true });
+  const { data, error } =
+    await supabase
+      .from("friends")
+      .select("*")
+      .order("id", {
+        ascending: true
+      });
 
-  if (error) return res.status(500).json(error);
+  if (error) {
+    return res
+      .status(500)
+      .json(error);
+  }
+
   res.json(data);
 });
 
-app.get("/friend-search", async (req, res) => {
-  const keyword = req.query.q || "";
+app.get(
+  "/friend-search",
+  async (req, res) => {
+    const keyword =
+      req.query.q || "";
 
-  const { data, error } = await supabase
-    .from("friends")
-    .select("*")
-    .ilike("friend_name", `%${keyword}%`)
-    .order("friend_name");
+    const { data, error } =
+      await supabase
+        .from("friends")
+        .select("*")
+        .ilike(
+          "friend_name",
+          `%${keyword}%`
+        )
+        .order("friend_name");
 
-  if (error) return res.status(500).json(error);
-  res.json(data);
-});
+    if (error) {
+      return res
+        .status(500)
+        .json(error);
+    }
+
+    res.json(data);
+  }
+);
+
+// ======================================================
+// V5.6 - 친구 1명의 YouTube 확인
+// ======================================================
+
+app.get(
+  "/friend-youtube/:id",
+  async (req, res) => {
+    try {
+      const {
+        data: friend,
+        error
+      } = await supabase
+        .from("friends")
+        .select("*")
+        .eq(
+          "id",
+          req.params.id
+        )
+        .single();
+
+      if (error) {
+        return res
+          .status(500)
+          .json({
+            ok: false,
+            error: error.message
+          });
+      }
+
+      const result =
+        await getFriendYouTube(
+          friend
+        );
+
+      res.json(result);
+    } catch (e) {
+      res
+        .status(500)
+        .json({
+          ok: false,
+          error: e.message
+        });
+    }
+  }
+);
+
+// ======================================================
+// V5.6 - 활성 친구 전체 YouTube 확인
+// ======================================================
+
+app.get(
+  "/friends-youtube",
+  async (req, res) => {
+    try {
+      const {
+        data: friends,
+        error
+      } = await supabase
+        .from("friends")
+        .select("*")
+        .eq("active", true)
+        .order(
+          "id",
+          { ascending: true }
+        );
+
+      if (error) {
+        return res
+          .status(500)
+          .json({
+            ok: false,
+            error: error.message
+          });
+      }
+
+      const results = [];
+
+      for (const friend of friends) {
+        const result =
+          await getFriendYouTube(
+            friend
+          );
+
+        results.push(result);
+      }
+
+      res.json({
+        ok: true,
+        friends: friends.length,
+
+        found:
+          results.filter(
+            r => r.youtube_url
+          ).length,
+
+        results
+      });
+    } catch (e) {
+      res
+        .status(500)
+        .json({
+          ok: false,
+          error: e.message
+        });
+    }
+  }
+);
+
+// ======================================================
+// 곡 목록
+// ======================================================
 
 app.get("/tracks", async (req, res) => {
-  let query = supabase
-    .from("tracks")
-    .select("*")
-    .order("public_at", { ascending: false, nullsFirst: false })
-    .order("detected_at", { ascending: false });
+  let query =
+    supabase
+      .from("tracks")
+      .select("*")
+      .order(
+        "public_at",
+        {
+          ascending: false,
+          nullsFirst: false
+        }
+      )
+      .order(
+        "detected_at",
+        {
+          ascending: false
+        }
+      );
 
   if (req.query.state) {
-    query = query.eq("state", req.query.state);
+    query =
+      query.eq(
+        "state",
+        req.query.state
+      );
   }
 
-  const { data, error } = await query;
+  const { data, error } =
+    await query;
 
-  if (error) return res.status(500).json(error);
+  if (error) {
+    return res
+      .status(500)
+      .json(error);
+  }
+
   res.json(data);
 });
 
-app.get("/mark-read/:id", async (req, res) => {
-  const { data, error } = await supabase
-    .from("tracks")
-    .update({
-      state: "READ",
-      read_at: new Date().toISOString()
-    })
-    .eq("id", req.params.id)
-    .select();
+// ======================================================
+// READ
+// ======================================================
 
-  if (error) {
-    return res.status(500).json({ ok: false, error: error.message });
-  }
+app.get(
+  "/mark-read/:id",
+  async (req, res) => {
+    const { data, error } =
+      await supabase
+        .from("tracks")
+        .update({
+          state: "READ",
+          read_at:
+            new Date()
+              .toISOString()
+        })
+        .eq(
+          "id",
+          req.params.id
+        )
+        .select();
 
-  res.json({ ok: true, data });
-});
+    if (error) {
+      return res
+        .status(500)
+        .json({
+          ok: false,
+          error: error.message
+        });
+    }
 
-app.get("/add-friend", async (req, res) => {
-  const { friend_name, profile_url, group_name } = req.query;
-
-  if (!friend_name || !profile_url) {
-    return res.status(400).json({
-      ok: false,
-      error: "friend_name/profile_url required"
+    res.json({
+      ok: true,
+      data
     });
   }
+);
 
-  const { data, error } = await supabase
-    .from("friends")
-    .insert({
+// ======================================================
+// 친구 추가
+// ======================================================
+
+app.get(
+  "/add-friend",
+  async (req, res) => {
+    const {
       friend_name,
       profile_url,
-      group_name: group_name || "한국",
-      active: true
-    })
-    .select();
+      group_name
+    } = req.query;
 
-  if (error) {
-    return res.status(500).json({ ok: false, error: error.message });
-  }
-
-  res.json({ ok: true, friend: data });
-});
-
-app.get("/delete-friend/:id", async (req, res) => {
-  const { data, error } = await supabase
-    .from("friends")
-    .delete()
-    .eq("id", req.params.id)
-    .select();
-
-  if (error) {
-    return res.status(500).json({ ok: false, error: error.message });
-  }
-
-  res.json({ ok: true, deleted: data });
-});
-
-app.get("/toggle-friend/:id", async (req, res) => {
-  const { data: current, error: readError } = await supabase
-    .from("friends")
-    .select("active")
-    .eq("id", req.params.id)
-    .single();
-
-  if (readError) {
-    return res.status(500).json({ ok: false, error: readError.message });
-  }
-
-  const { data, error } = await supabase
-    .from("friends")
-    .update({ active: !current.active })
-    .eq("id", req.params.id)
-    .select();
-
-  if (error) {
-    return res.status(500).json({ ok: false, error: error.message });
-  }
-
-  res.json({ ok: true, friend: data });
-});
-
-app.get("/scan-friend/:id", async (req, res) => {
-  try {
-    const { data: friend, error } = await supabase
-      .from("friends")
-      .select("*")
-      .eq("id", req.params.id)
-      .single();
-
-    if (error) {
-      return res.status(500).json({ ok: false, error: error.message });
+    if (
+      !friend_name ||
+      !profile_url
+    ) {
+      return res
+        .status(400)
+        .json({
+          ok: false,
+          error:
+            "friend_name/profile_url required"
+        });
     }
 
-    const result = await scanFriend(friend);
+    const { data, error } =
+      await supabase
+        .from("friends")
+        .insert({
+          friend_name,
+          profile_url,
+
+          group_name:
+            group_name || "한국",
+
+          active: true
+        })
+        .select();
+
+    if (error) {
+      return res
+        .status(500)
+        .json({
+          ok: false,
+          error: error.message
+        });
+    }
 
     res.json({
       ok: true,
-      result
+      friend: data
     });
-  } catch (e) {
-    res.status(500).json({ ok: false, error: e.message });
   }
-});
+);
 
-app.get("/debug-profile/:id", async (req, res) => {
-  try {
-    const { data: friend, error } = await supabase
-      .from("friends")
-      .select("*")
-      .eq("id", req.params.id)
-      .single();
+// ======================================================
+// 친구 삭제
+// ======================================================
+
+app.get(
+  "/delete-friend/:id",
+  async (req, res) => {
+    const { data, error } =
+      await supabase
+        .from("friends")
+        .delete()
+        .eq(
+          "id",
+          req.params.id
+        )
+        .select();
 
     if (error) {
-      return res.status(500).json({ ok: false, error: error.message });
+      return res
+        .status(500)
+        .json({
+          ok: false,
+          error: error.message
+        });
     }
 
-    const { data: html } = await axios.get(friend.profile_url, {
-      headers,
-      timeout: 20000
+    res.json({
+      ok: true,
+      deleted: data
     });
+  }
+);
 
-    const matches = [];
-    const patterns = ["song", "created_at", "clip", "id", "audio_url"];
+// ======================================================
+// 친구 ON/OFF
+// ======================================================
 
-    for (const p of patterns) {
-      const idx = html.indexOf(p);
-      matches.push({
-        pattern: p,
-        found: idx >= 0,
-        preview: idx >= 0 ? html.slice(Math.max(0, idx - 300), idx + 700) : null
+app.get(
+  "/toggle-friend/:id",
+  async (req, res) => {
+    const {
+      data: current,
+      error: readError
+    } = await supabase
+      .from("friends")
+      .select("active")
+      .eq(
+        "id",
+        req.params.id
+      )
+      .single();
+
+    if (readError) {
+      return res
+        .status(500)
+        .json({
+          ok: false,
+          error:
+            readError.message
+        });
+    }
+
+    const { data, error } =
+      await supabase
+        .from("friends")
+        .update({
+          active:
+            !current.active
+        })
+        .eq(
+          "id",
+          req.params.id
+        )
+        .select();
+
+    if (error) {
+      return res
+        .status(500)
+        .json({
+          ok: false,
+          error: error.message
+        });
+    }
+
+    res.json({
+      ok: true,
+      friend: data
+    });
+  }
+);
+
+// ======================================================
+// 친구 개별 수집
+// ======================================================
+
+app.get(
+  "/scan-friend/:id",
+  async (req, res) => {
+    try {
+      const {
+        data: friend,
+        error
+      } = await supabase
+        .from("friends")
+        .select("*")
+        .eq(
+          "id",
+          req.params.id
+        )
+        .single();
+
+      if (error) {
+        return res
+          .status(500)
+          .json({
+            ok: false,
+            error:
+              error.message
+          });
+      }
+
+      const result =
+        await scanFriend(
+          friend
+        );
+
+      res.json({
+        ok: true,
+        result
       });
+    } catch (e) {
+      res
+        .status(500)
+        .json({
+          ok: false,
+          error: e.message
+        });
     }
+  }
+);
+
+// ======================================================
+// 디버그
+// ======================================================
+
+app.get(
+  "/debug-profile/:id",
+  async (req, res) => {
+    try {
+      const {
+        data: friend,
+        error
+      } = await supabase
+        .from("friends")
+        .select("*")
+        .eq(
+          "id",
+          req.params.id
+        )
+        .single();
+
+      if (error) {
+        return res
+          .status(500)
+          .json({
+            ok: false,
+            error:
+              error.message
+          });
+      }
+
+      const { data: html } =
+        await axios.get(
+          friend.profile_url,
+          {
+            headers,
+            timeout: 20000
+          }
+        );
+
+      const matches = [];
+
+      const patterns = [
+        "song",
+        "created_at",
+        "clip",
+        "id",
+        "audio_url"
+      ];
+
+      for (const p of patterns) {
+        const idx =
+          html.indexOf(p);
+
+        matches.push({
+          pattern: p,
+          found: idx >= 0,
+
+          preview:
+            idx >= 0
+              ? html.slice(
+                  Math.max(
+                    0,
+                    idx - 300
+                  ),
+                  idx + 700
+                )
+              : null
+        });
+      }
+
+      res.json({
+        ok: true,
+
+        friend:
+          friend.friend_name,
+
+        profile_url:
+          friend.profile_url,
+
+        html_length:
+          html.length,
+
+        matches
+      });
+    } catch (e) {
+      res
+        .status(500)
+        .json({
+          ok: false,
+          error: e.message
+        });
+    }
+  }
+);
+
+// ======================================================
+// 통계
+// ======================================================
+
+app.get(
+  "/stats",
+  async (req, res) => {
+    const {
+      count: newCount
+    } = await supabase
+      .from("tracks")
+      .select(
+        "*",
+        {
+          count: "exact",
+          head: true
+        }
+      )
+      .eq(
+        "state",
+        "NEW"
+      );
+
+    const {
+      count: recentCount
+    } = await supabase
+      .from("tracks")
+      .select(
+        "*",
+        {
+          count: "exact",
+          head: true
+        }
+      )
+      .eq(
+        "state",
+        "RECENT"
+      );
+
+    const {
+      count: readCount
+    } = await supabase
+      .from("tracks")
+      .select(
+        "*",
+        {
+          count: "exact",
+          head: true
+        }
+      )
+      .eq(
+        "state",
+        "READ"
+      );
+
+    const {
+      count: archiveCount
+    } = await supabase
+      .from("tracks")
+      .select(
+        "*",
+        {
+          count: "exact",
+          head: true
+        }
+      )
+      .eq(
+        "state",
+        "ARCHIVED"
+      );
+
+    const {
+      count: friendCount
+    } = await supabase
+      .from("friends")
+      .select(
+        "*",
+        {
+          count: "exact",
+          head: true
+        }
+      )
+      .eq(
+        "active",
+        true
+      );
 
     res.json({
-      ok: true,
-      friend: friend.friend_name,
-      profile_url: friend.profile_url,
-      html_length: html.length,
-      matches
+      new:
+        newCount || 0,
+
+      recent:
+        recentCount || 0,
+
+      read:
+        readCount || 0,
+
+      archived:
+        archiveCount || 0,
+
+      friends:
+        friendCount || 0
     });
-
-  } catch (e) {
-    res.status(500).json({ ok: false, error: e.message });
   }
-});
+);
 
-app.get("/stats", async (req, res) => {
-  const { count: newCount } = await supabase
-    .from("tracks")
-    .select("*", { count: "exact", head: true })
-    .eq("state", "NEW");
+// ======================================================
+// 최근수집
+// ======================================================
 
-  const { count: recentCount } = await supabase
-    .from("tracks")
-    .select("*", { count: "exact", head: true })
-    .eq("state", "RECENT");
+app.get(
+  "/latest",
+  async (req, res) => {
+    const { data, error } =
+      await supabase
+        .from("tracks")
+        .select("*")
+        .order(
+          "public_at",
+          {
+            ascending: false,
+            nullsFirst: false
+          }
+        )
+        .order(
+          "detected_at",
+          {
+            ascending: false
+          }
+        )
+        .limit(20);
 
-  const { count: readCount } = await supabase
-    .from("tracks")
-    .select("*", { count: "exact", head: true })
-    .eq("state", "READ");
+    if (error) {
+      return res
+        .status(500)
+        .json(error);
+    }
 
-  const { count: archiveCount } = await supabase
-    .from("tracks")
-    .select("*", { count: "exact", head: true })
-    .eq("state", "ARCHIVED");
+    res.json(data);
+  }
+);
 
-  const { count: friendCount } = await supabase
-    .from("friends")
-    .select("*", { count: "exact", head: true })
-    .eq("active", true);
+// ======================================================
+// 정리
+// ======================================================
 
-  res.json({
-    new: newCount || 0,
-    recent: recentCount || 0,
-    read: readCount || 0,
-    archived: archiveCount || 0,
-    friends: friendCount || 0
-  });
-});
+app.get(
+  "/cleanup",
+  async (req, res) => {
+    const result =
+      await cleanupTracks();
 
-app.get("/latest", async (req, res) => {
-  const { data, error } = await supabase
-    .from("tracks")
-    .select("*")
-    .order("public_at", { ascending: false, nullsFirst: false })
-    .order("detected_at", { ascending: false })
-    .limit(20);
-
-  if (error) return res.status(500).json(error);
-  res.json(data);
-});
-
-app.get("/cleanup", async (req, res) => {
-  const result = await cleanupTracks();
-  res.json(result);
-});
-
-app.get("/scan", async (req, res) => {
-  try {
-    const result = await scanOnce();
     res.json(result);
-  } catch (e) {
-    res.status(500).json({ ok: false, error: e.message });
   }
-});
+);
 
-cron.schedule("*/10 * * * *", async () => {
-  console.log("auto scan start");
-  await scanOnce();
-});
+// ======================================================
+// 수집 실행
+// ======================================================
 
-const PORT = process.env.PORT || 3000;
+app.get(
+  "/scan",
+  async (req, res) => {
+    try {
+      const result =
+        await scanOnce();
 
-app.listen(PORT, () => {
-  console.log(`Server running on ${PORT}`);
-});
+      res.json(result);
+    } catch (e) {
+      res
+        .status(500)
+        .json({
+          ok: false,
+          error: e.message
+        });
+    }
+  }
+);
+
+// ======================================================
+// 10분 자동 수집
+// ======================================================
+
+cron.schedule(
+  "*/10 * * * *",
+  async () => {
+    console.log(
+      "auto scan start"
+    );
+
+    try {
+      await scanOnce();
+    } catch (e) {
+      console.log(
+        "auto scan fail:",
+        e.message
+      );
+    }
+  }
+);
+
+// ======================================================
+// 서버 시작
+// ======================================================
+
+const PORT =
+  process.env.PORT || 3000;
+
+app.listen(
+  PORT,
+  () => {
+    console.log(
+      `SUNO Radar V5.6 Server running on ${PORT}`
+    );
+  }
+);
