@@ -1606,7 +1606,7 @@ function renderYouTubeChannels(){
 
           <button
             class="${mutual ? "relationMutual" : "relationUnknown"}"
-            onclick="toggleYouTubeRelation(${c.id},${JSON.stringify(c.relation_status || "UNKNOWN")})">
+            onclick="toggleYouTubeRelation(${c.id})">
             ${mutual ? "🤝 맞팔" : "❓ 확인불가"}
           </button>
 
@@ -1623,7 +1623,21 @@ function renderYouTubeChannels(){
     }).join("");
 }
 
-async function toggleYouTubeRelation(id,current){
+async function toggleYouTubeRelation(id){
+
+  const channel =
+    youtubeChannels.find(
+      c => c.id === id
+    );
+
+  if(!channel){
+    alert("채널 정보를 찾을 수 없습니다.");
+    return;
+  }
+
+  const current =
+    channel.relation_status ||
+    "UNKNOWN";
 
   const next =
     current === "MUTUAL"
