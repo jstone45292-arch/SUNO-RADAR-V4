@@ -1011,7 +1011,6 @@ async function saveYouTubeAuth(
   return row;
 }
 
-
 // ======================================================
 // OAuth Token
 // ======================================================
@@ -1422,8 +1421,8 @@ async function fetchYouTubeChannelDetails(
 
 
 // ======================================================
-// V6.9 구독채널 동기화
-// 기존 ON/OFF 유지
+// V6.9.3 구독채널 동기화
+// 기존 ON/OFF + 관계상태 + 관심채널 유지
 // ======================================================
 
 async function syncYouTubeSubscriptions() {
@@ -1456,7 +1455,7 @@ async function syncYouTubeSubscriptions() {
         "youtube_channels"
       )
       .select(
-        "channel_id,active"
+        "channel_id,active,relation_status,favorite"
       );
 
   if (
@@ -1466,13 +1465,13 @@ async function syncYouTubeSubscriptions() {
     throw existingError;
   }
 
-  const activeMap =
+  const existingMap =
     new Map(
       (existing || [])
         .map(
           row => [
             row.channel_id,
-            row.active
+            row
           ]
         )
     );
@@ -1485,6 +1484,11 @@ async function syncYouTubeSubscriptions() {
           detailMap.get(
             sub.channel_id
           ) || {};
+
+        const previous =
+          existingMap.get(
+            sub.channel_id
+          );
 
         return {
 
@@ -1513,15 +1517,19 @@ async function syncYouTubeSubscriptions() {
             now,
 
           active:
-            activeMap.has(
-              sub.channel_id
-            )
-              ?
-              activeMap.get(
-                sub.channel_id
-              )
-              :
-              true
+            previous
+              ? previous.active
+              : true,
+
+          relation_status:
+            previous
+              ?.relation_status ||
+            "UNKNOWN",
+
+          favorite:
+            previous
+              ?.favorite ||
+            false
         };
       }
     );
@@ -1653,7 +1661,10 @@ function classifyYouTubeVideo(
 
 
 // ======================================================
-// YouTube 정리
+// V6.9.3 YouTube 정리
+// - READ 3일 후 ARCHIVED
+// - NEW 7일 초과 시 ARCHIVED
+// - ARCHIVED 30일 후 삭제
 // ======================================================
 
 async function cleanupYouTubeVideos() {
@@ -1668,6 +1679,13 @@ async function cleanupYouTubeVideos() {
       86400000
     ).toISOString();
 
+  const newLimit =
+    new Date(
+      now.getTime() -
+      NEW_LIMIT_DAYS *
+      86400000
+    ).toISOString();
+
   const deleteLimit =
     new Date(
       now.getTime() -
@@ -1677,7 +1695,7 @@ async function cleanupYouTubeVideos() {
 
   const {
     error:
-      archiveError
+      readArchiveError
   } =
     await supabase
       .from(
@@ -1702,6 +1720,31 @@ async function cleanupYouTubeVideos() {
 
   const {
     error:
+      oldNewArchiveError
+  } =
+    await supabase
+      .from(
+        "youtube_videos"
+      )
+      .update({
+
+        state:
+          "ARCHIVED",
+
+        archived_at:
+          now.toISOString()
+      })
+      .eq(
+        "state",
+        "NEW"
+      )
+      .lt(
+        "published_at",
+        newLimit
+      );
+
+  const {
+    error:
       deleteError
   } =
     await supabase
@@ -1721,11 +1764,17 @@ async function cleanupYouTubeVideos() {
   return {
 
     ok:
-      !archiveError &&
+      !readArchiveError &&
+      !oldNewArchiveError &&
       !deleteError,
 
-    archiveError:
-      archiveError
+    readArchiveError:
+      readArchiveError
+        ?.message ||
+      null,
+
+    oldNewArchiveError:
+      oldNewArchiveError
         ?.message ||
       null,
 
@@ -1738,7 +1787,7 @@ async function cleanupYouTubeVideos() {
 
 
 // ======================================================
-// V6.9.2 YouTube 채널 최근영상 후보 수집
+// YouTube 채널 최근영상 후보 수집
 // ======================================================
 
 async function fetchYouTubeChannelCandidates(
@@ -1921,9 +1970,8 @@ async function fetchYouTubeChannelCandidates(
 
 
 // ======================================================
-// V6.9.2 YouTube 전체 수집
-// 12채널씩 병렬 처리
-// 기존 SUNO 기능은 변경하지 않음
+// V6.9.3 YouTube 전체 수집
+// active=true 채널만 12개씩 병렬 처리
 // ======================================================
 
 async function scanYouTubeOnce() {
@@ -3258,7 +3306,7 @@ app.get(
 
 
 // ======================================================
-// V6.9 구독채널 관리
+// V6.9.3 구독채널 관리
 // ======================================================
 
 app.get(
@@ -3294,6 +3342,29 @@ app.get(
         );
     }
 
+    if (
+      req.query.relation_status
+    ) {
+
+      query =
+        query.eq(
+          "relation_status",
+          req.query.relation_status
+        );
+    }
+
+    if (
+      req.query.favorite ===
+      "true"
+    ) {
+
+      query =
+        query.eq(
+          "favorite",
+          true
+        );
+    }
+
     const {
       data,
       error
@@ -3320,6 +3391,10 @@ app.get(
   }
 );
 
+
+// ======================================================
+// 레이더 ON/OFF
+// ======================================================
 
 app.post(
   "/youtube/channels/:id/toggle",
@@ -3369,6 +3444,194 @@ app.post(
 
             active:
               !current.active,
+
+            updated_at:
+              new Date()
+                .toISOString()
+          })
+          .eq(
+            "id",
+            req.params.id
+          )
+          .select()
+          .single();
+
+      if (
+        error
+      ) {
+
+        throw error;
+      }
+
+      res.json({
+
+        ok: true,
+
+        channel:
+          data
+      });
+
+    } catch (e) {
+
+      res
+        .status(500)
+        .json({
+          ok: false,
+          error:
+            e.message
+        });
+    }
+  }
+);
+
+
+// ======================================================
+// 맞팔 / 확인불가 저장
+// relation_status: MUTUAL | UNKNOWN
+// ======================================================
+
+app.post(
+  "/youtube/channels/:id/relation",
+  async (
+    req,
+    res
+  ) => {
+
+    try {
+
+      const relationStatus =
+        String(
+          req.body
+            ?.relation_status ||
+          ""
+        ).toUpperCase();
+
+      const allowed =
+        [
+          "MUTUAL",
+          "UNKNOWN"
+        ];
+
+      if (
+        !allowed.includes(
+          relationStatus
+        )
+      ) {
+
+        return res
+          .status(400)
+          .json({
+            ok: false,
+            error:
+              "relation_status must be MUTUAL or UNKNOWN"
+          });
+      }
+
+      const {
+        data,
+        error
+      } =
+        await supabase
+          .from(
+            "youtube_channels"
+          )
+          .update({
+
+            relation_status:
+              relationStatus,
+
+            updated_at:
+              new Date()
+                .toISOString()
+          })
+          .eq(
+            "id",
+            req.params.id
+          )
+          .select()
+          .single();
+
+      if (
+        error
+      ) {
+
+        throw error;
+      }
+
+      res.json({
+
+        ok: true,
+
+        channel:
+          data
+      });
+
+    } catch (e) {
+
+      res
+        .status(500)
+        .json({
+          ok: false,
+          error:
+            e.message
+        });
+    }
+  }
+);
+
+
+// ======================================================
+// 관심채널 ⭐ ON/OFF
+// ======================================================
+
+app.post(
+  "/youtube/channels/:id/favorite",
+  async (
+    req,
+    res
+  ) => {
+
+    try {
+
+      const {
+        data:
+          current,
+
+        error:
+          readError
+      } =
+        await supabase
+          .from(
+            "youtube_channels"
+          )
+          .select(
+            "id,favorite"
+          )
+          .eq(
+            "id",
+            req.params.id
+          )
+          .single();
+
+      if (
+        readError
+      ) {
+
+        throw readError;
+      }
+
+      const {
+        data,
+        error
+      } =
+        await supabase
+          .from(
+            "youtube_channels"
+          )
+          .update({
+
+            favorite:
+              !current.favorite,
 
             updated_at:
               new Date()
@@ -3493,7 +3756,6 @@ app.post(
     }
   }
 );
-
 
 // ======================================================
 // YouTube 영상 API
@@ -3928,7 +4190,7 @@ app.listen(
   () => {
 
     console.log(
-      `SUNO Radar V6.9.2 Server running on ${PORT}`
+      `SUNO Radar V6.9.3 Server running on ${PORT}`
     );
 
     console.log(
