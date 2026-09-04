@@ -6,7 +6,7 @@
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#ff6b00">
 
-<title>SUNO Radar V6.9.1</title>
+<title>SUNO Radar V6.9.3</title>
 
 <style>
 body{
@@ -216,6 +216,51 @@ input,select{
   margin:8px 0 12px
 }
 
+.youtubeChannelFilters{
+  display:flex;
+  gap:7px;
+  flex-wrap:wrap;
+  margin:8px 0 12px
+}
+.filterbtn{
+  background:#333;
+  color:white
+}
+.filterbtn.activeFilter{
+  background:#ff6b00!important;
+  color:white
+}
+.relationMutual{
+  background:#7c3aed;
+  color:white
+}
+.relationUnknown{
+  background:#555;
+  color:white
+}
+.favoriteOn{
+  background:#f59e0b;
+  color:#111
+}
+.favoriteOff{
+  background:#444;
+  color:#ddd
+}
+.channelBadges{
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+  margin-top:5px
+}
+.miniBadge{
+  display:inline-block;
+  padding:3px 7px;
+  border-radius:999px;
+  font-size:11px;
+  background:#333;
+  color:#ddd
+}
+
 /* YouTube Radar */
 .youtubeHeader{
   display:flex;
@@ -294,7 +339,7 @@ input,select{
 
 <body>
 
-<header>🎵 SUNO Radar V6.9.1</header>
+<header>🎵 SUNO Radar V6.9.3</header>
 
 <div class="stats">
   <div class="statBox">
@@ -438,6 +483,12 @@ input,select{
       YouTube 수집
     </button>
 
+    <button
+      class="btn"
+      onclick="cleanupYouTubeNow(this)">
+      YouTube 정리
+    </button>
+
     <button class="btn active" id="ytTabNEW"
       onclick="setYouTubeState('NEW')">NEW</button>
 
@@ -484,6 +535,21 @@ input,select{
       </button>
     </div>
 
+    <div class="youtubeChannelFilters">
+      <button class="filterbtn activeFilter" id="ytChFilterALL"
+        onclick="setYouTubeChannelFilter('ALL')">전체</button>
+      <button class="filterbtn" id="ytChFilterON"
+        onclick="setYouTubeChannelFilter('ON')">🟢 레이더 ON</button>
+      <button class="filterbtn" id="ytChFilterOFF"
+        onclick="setYouTubeChannelFilter('OFF')">🔕 레이더 OFF</button>
+      <button class="filterbtn" id="ytChFilterMUTUAL"
+        onclick="setYouTubeChannelFilter('MUTUAL')">🤝 맞팔확인</button>
+      <button class="filterbtn" id="ytChFilterFAVORITE"
+        onclick="setYouTubeChannelFilter('FAVORITE')">⭐ 관심채널</button>
+      <button class="filterbtn" id="ytChFilterUNKNOWN"
+        onclick="setYouTubeChannelFilter('UNKNOWN')">❓ 확인불가</button>
+    </div>
+
     <div id="youtubeChannelSummary" class="youtubeChannelSummary">
       구독채널 목록 로딩 전
     </div>
@@ -524,6 +590,7 @@ let currentFriendList = [];
 let youtubeVideos = [];
 let youtubeState = "NEW";
 let youtubeChannels = [];
+let youtubeChannelFilter = "ALL";
 
 function timeAgo(dateText){
 
@@ -1345,8 +1412,45 @@ async function scanYouTubeVideos(btn){
   }
 }
 
+
+async function cleanupYouTubeNow(btn){
+
+  const original = btn.innerText;
+  btn.disabled = true;
+  btn.innerText = "정리중...";
+
+  try{
+
+    const res = await fetch("/youtube/cleanup");
+    const result = await res.json();
+
+    if(!res.ok || !result.ok){
+      throw new Error(result.error || "YouTube 정리 실패");
+    }
+
+    alert(
+      "YouTube 정리 완료\n7일 지난 NEW → ARCHIVED\n3일 지난 READ → ARCHIVED"
+    );
+
+    await loadYouTubeVideos();
+    await updateYouTubeBadge();
+
+  }catch(e){
+
+    alert(
+      "YouTube 정리 실패\n\n" +
+      e.message
+    );
+
+  }finally{
+
+    btn.disabled = false;
+    btn.innerText = original;
+  }
+}
+
 /* =====================================================
-   YouTube 구독채널 관리 V6.9.1
+   YouTube 구독채널 관리 V6.9.3
    ===================================================== */
 
 function toggleYouTubeChannelPanel(){
@@ -1406,16 +1510,27 @@ async function loadYouTubeChannels(){
   }
 }
 
+function setYouTubeChannelFilter(filter){
+
+  youtubeChannelFilter = filter;
+
+  ["ALL","ON","OFF","MUTUAL","FAVORITE","UNKNOWN"].forEach(f => {
+    const b = document.getElementById("ytChFilter" + f);
+    if(b) b.classList.toggle("activeFilter", f === filter);
+  });
+
+  renderYouTubeChannels();
+}
+
 function renderYouTubeChannels(){
 
   const q =
     document.getElementById("youtubeChannelSearch")
       ?.value?.trim()?.toLowerCase() || "";
 
-  let data = youtubeChannels;
+  let data = [...youtubeChannels];
 
   if(q){
-
     data = data.filter(c =>
       (c.channel_title || "")
         .toLowerCase()
@@ -1423,14 +1538,37 @@ function renderYouTubeChannels(){
     );
   }
 
+  if(youtubeChannelFilter === "ON"){
+    data = data.filter(c => c.active);
+  }else if(youtubeChannelFilter === "OFF"){
+    data = data.filter(c => !c.active);
+  }else if(youtubeChannelFilter === "MUTUAL"){
+    data = data.filter(c => c.relation_status === "MUTUAL");
+  }else if(youtubeChannelFilter === "FAVORITE"){
+    data = data.filter(c => c.favorite === true);
+  }else if(youtubeChannelFilter === "UNKNOWN"){
+    data = data.filter(c => (c.relation_status || "UNKNOWN") === "UNKNOWN");
+  }
+
   const activeCount =
     youtubeChannels.filter(c => c.active).length;
 
+  const mutualCount =
+    youtubeChannels.filter(c => c.relation_status === "MUTUAL").length;
+
+  const favoriteCount =
+    youtubeChannels.filter(c => c.favorite === true).length;
+
   document.getElementById("youtubeChannelSummary").innerText =
-    `감시 채널 ${activeCount}개 / 전체 구독 ${youtubeChannels.length}개 / 표시 ${data.length}개`;
+    `레이더 ON ${activeCount}개 / 전체 구독 ${youtubeChannels.length}개 / 맞팔확인 ${mutualCount}개 / 관심 ${favoriteCount}개 / 표시 ${data.length}개`;
 
   document.getElementById("youtubeChannelList").innerHTML =
-    data.map(c => `
+    data.map(c => {
+
+      const mutual = c.relation_status === "MUTUAL";
+      const favorite = c.favorite === true;
+
+      return `
       <div class="youtubeChannelRow ${c.active ? "" : "off"}">
 
         ${
@@ -1446,24 +1584,110 @@ function renderYouTubeChannels(){
               href="${c.channel_url || "#"}"
               target="_blank"
               style="color:white;text-decoration:none">
-              ${c.channel_title || "YouTube channel"}
+              ${favorite ? "⭐ " : ""}${c.channel_title || "YouTube channel"}
             </a>
           </div>
 
-          <div class="small">
-            ${c.active ? "🔔 감시 중" : "⏸ 감시 안 함"}
+          <div class="channelBadges">
+            <span class="miniBadge">${c.active ? "🟢 레이더 ON" : "🔕 레이더 OFF"}</span>
+            <span class="miniBadge">${mutual ? "🤝 맞팔확인" : "❓ 확인불가"}</span>
+            ${favorite ? `<span class="miniBadge">⭐ 관심채널</span>` : ""}
           </div>
 
         </div>
 
-        <button
-          class="${c.active ? "onbtn" : "offbtn"}"
-          onclick="toggleYouTubeChannel(${c.id})">
-          ${c.active ? "ON" : "OFF"}
-        </button>
+        <div class="friendActions">
+
+          <button
+            class="${favorite ? "favoriteOn" : "favoriteOff"}"
+            onclick="toggleYouTubeFavorite(${c.id})">
+            ${favorite ? "⭐ 관심" : "☆ 관심"}
+          </button>
+
+          <button
+            class="${mutual ? "relationMutual" : "relationUnknown"}"
+            onclick="toggleYouTubeRelation(${c.id},${JSON.stringify(c.relation_status || "UNKNOWN")})">
+            ${mutual ? "🤝 맞팔" : "❓ 확인불가"}
+          </button>
+
+          <button
+            class="${c.active ? "onbtn" : "offbtn"}"
+            onclick="toggleYouTubeChannel(${c.id})">
+            ${c.active ? "레이더 ON" : "레이더 OFF"}
+          </button>
+
+        </div>
 
       </div>
-    `).join("");
+      `;
+    }).join("");
+}
+
+async function toggleYouTubeRelation(id,current){
+
+  const next =
+    current === "MUTUAL"
+      ? "UNKNOWN"
+      : "MUTUAL";
+
+  try{
+
+    const res =
+      await fetch(
+        "/youtube/channels/" + id + "/relation",
+        {
+          method:"POST",
+          headers:{
+            "Content-Type":"application/json"
+          },
+          body:JSON.stringify({
+            relation_status:next
+          })
+        }
+      );
+
+    const result = await res.json();
+
+    if(!res.ok || !result.ok)
+      throw new Error(result.error || "관계상태 변경 실패");
+
+    await loadYouTubeChannels();
+
+  }catch(e){
+
+    alert(
+      "맞팔 상태 변경 실패\\n\\n" +
+      e.message
+    );
+  }
+}
+
+async function toggleYouTubeFavorite(id){
+
+  try{
+
+    const res =
+      await fetch(
+        "/youtube/channels/" + id + "/favorite",
+        {
+          method:"POST"
+        }
+      );
+
+    const result = await res.json();
+
+    if(!res.ok || !result.ok)
+      throw new Error(result.error || "관심채널 변경 실패");
+
+    await loadYouTubeChannels();
+
+  }catch(e){
+
+    alert(
+      "관심채널 변경 실패\\n\\n" +
+      e.message
+    );
+  }
 }
 
 async function toggleYouTubeChannel(id){
