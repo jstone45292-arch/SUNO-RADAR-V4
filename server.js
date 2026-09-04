@@ -23,8 +23,6 @@ const RECENT_LIMIT_DAYS = 14;
 
 const SONG_SCAN_LIMIT = 5;
 const YOUTUBE_VIDEO_SCAN_LIMIT = 5;
-const YOUTUBE_SCAN_CONCURRENCY = 12;
-const YOUTUBE_DB_CHUNK_SIZE = 200;
 
 const GOOGLE_CLIENT_ID =
   process.env.GOOGLE_CLIENT_ID;
@@ -978,6 +976,7 @@ async function saveYouTubeAuth(
         .update(row)
         .eq(
           "id",
+
           current.id
         );
 
@@ -1170,6 +1169,35 @@ async function youtubeApiGet(
 
   const accessToken =
     await getYouTubeAccessToken();
+
+  const {
+    data
+  } =
+    await axios.get(
+      `https://www.googleapis.com/youtube/v3/${path}`,
+
+      {
+        params,
+
+        headers: {
+          Authorization:
+            `Bearer ${accessToken}`
+        },
+
+        timeout:
+          25000
+      }
+    );
+
+  return data;
+}
+
+
+async function youtubeApiGetWithToken(
+  accessToken,
+  path,
+  params = {}
+) {
 
   const {
     data
@@ -1710,38 +1738,8 @@ async function cleanupYouTubeVideos() {
 
 
 // ======================================================
-// V6.9.2 YouTube 고속 수집
-// - 채널 API 조회 병렬 처리
-// - access token 1회 확보
-// - 기존 video_id 일괄 조회
-// - 신규 영상 일괄 저장
+// V6.9.2 YouTube 채널 최근영상 후보 수집
 // ======================================================
-
-async function youtubeApiGetWithToken(
-  accessToken,
-  path,
-  params = {}
-) {
-
-  const {
-    data
-  } =
-    await axios.get(
-      `https://www.googleapis.com/youtube/v3/${path}`,
-      {
-        params,
-        headers: {
-          Authorization:
-            `Bearer ${accessToken}`
-        },
-        timeout:
-          25000
-      }
-    );
-
-  return data;
-}
-
 
 async function fetchYouTubeChannelCandidates(
   channel,
@@ -1753,9 +1751,12 @@ async function fetchYouTubeChannelCandidates(
   ) {
 
     return {
+
       channel:
         channel.channel_title,
+
       rows: [],
+
       error:
         "uploads_playlist_id_missing"
     };
@@ -1770,14 +1771,17 @@ async function fetchYouTubeChannelCandidates(
         {
           part:
             "snippet,contentDetails",
+
           playlistId:
             channel.uploads_playlist_id,
+
           maxResults:
             YOUTUBE_VIDEO_SCAN_LIMIT
         }
       );
 
-    const rows = [];
+    const rows =
+      [];
 
     for (
       const item
@@ -1788,12 +1792,16 @@ async function fetchYouTubeChannelCandidates(
         item
           ?.contentDetails
           ?.videoId ||
+
         item
           ?.snippet
           ?.resourceId
           ?.videoId;
 
-      if (!videoId) {
+      if (
+        !videoId
+      ) {
+
         continue;
       }
 
@@ -1801,9 +1809,11 @@ async function fetchYouTubeChannelCandidates(
         item
           ?.contentDetails
           ?.videoPublishedAt ||
+
         item
           ?.snippet
           ?.publishedAt ||
+
         null;
 
       const state =
@@ -1812,40 +1822,54 @@ async function fetchYouTubeChannelCandidates(
         );
 
       const row = {
+
         video_id:
           videoId,
+
         channel_id:
           channel.channel_id,
+
         channel_title:
           channel.channel_title ||
+
           item
             ?.snippet
             ?.videoOwnerChannelTitle ||
+
           "",
+
         title:
           item
             ?.snippet
             ?.title ||
+
           "YouTube video",
+
         video_url:
           `https://www.youtube.com/watch?v=${videoId}`,
+
         thumbnail_url:
           item
             ?.snippet
             ?.thumbnails
             ?.medium
             ?.url ||
+
           item
             ?.snippet
             ?.thumbnails
             ?.default
             ?.url ||
+
           null,
+
         published_at:
           publishedAt,
+
         detected_at:
           new Date()
             .toISOString(),
+
         state
       };
 
@@ -1853,44 +1877,63 @@ async function fetchYouTubeChannelCandidates(
         state ===
         "ARCHIVED"
       ) {
+
         row.archived_at =
           new Date()
             .toISOString();
       }
 
-      rows.push(row);
+      rows.push(
+        row
+      );
     }
 
     return {
+
       channel:
         channel.channel_title,
+
       rows,
-      error: null
+
+      error:
+        null
     };
 
   } catch (e) {
 
     return {
+
       channel:
         channel.channel_title,
+
       rows: [],
+
       error:
         e.response
           ?.data
           ?.error
           ?.message ||
+
         e.message
     };
   }
 }
 
 
+// ======================================================
+// V6.9.2 YouTube 전체 수집
+// 12채널씩 병렬 처리
+// 기존 SUNO 기능은 변경하지 않음
+// ======================================================
+
 async function scanYouTubeOnce() {
 
   await cleanupYouTubeVideos();
 
   const {
-    data: channels,
+    data:
+      channels,
+
     error
   } =
     await supabase
@@ -1905,48 +1948,38 @@ async function scanYouTubeOnce() {
       .order(
         "id",
         {
-          ascending: true
+          ascending:
+            true
         }
       );
 
-  if (error) {
+  if (
+    error
+  ) {
+
     throw error;
   }
 
   const channelList =
     channels || [];
 
-  if (!channelList.length) {
-    return {
-      ok: true,
-      channels: 0,
-      inserted: 0,
-      newVideos: 0,
-      skipped: 0,
-      failed: 0,
-      scanLimitPerChannel:
-        YOUTUBE_VIDEO_SCAN_LIMIT,
-      concurrency:
-        YOUTUBE_SCAN_CONCURRENCY
-    };
-  }
-
-  // 토큰을 채널마다 조회하지 않고 이번 스캔에서 1번만 확보
   const accessToken =
     await getYouTubeAccessToken();
 
-  // 1) 채널별 최근 영상 후보를 병렬로 수집
-  const channelBatches =
+  const batches =
     chunkArray(
       channelList,
-      YOUTUBE_SCAN_CONCURRENCY
+      12
     );
 
-  const candidateResults = [];
+  const allRows =
+    [];
+
+  let failed = 0;
 
   for (
     const batch
-    of channelBatches
+    of batches
   ) {
 
     const results =
@@ -1960,57 +1993,47 @@ async function scanYouTubeOnce() {
         )
       );
 
-    candidateResults.push(
-      ...results
-    );
-  }
-
-  let failed = 0;
-
-  const allCandidateRows = [];
-
-  for (
-    const result
-    of candidateResults
-  ) {
-
-    if (
-      result.error
+    for (
+      const result
+      of results
     ) {
 
-      failed++;
-
-      console.log(
-        "youtube channel scan fail:",
-        result.channel,
+      if (
         result.error
+      ) {
+
+        failed++;
+
+        console.log(
+          "youtube channel fail:",
+          result.channel,
+          result.error
+        );
+
+        continue;
+      }
+
+      allRows.push(
+        ...result.rows
       );
-
-      continue;
     }
-
-    allCandidateRows.push(
-      ...result.rows
-    );
   }
 
-
-  // 2) 같은 video_id 중복 제거
-  const candidateMap =
+  const uniqueMap =
     new Map();
 
   for (
     const row
-    of allCandidateRows
+    of allRows
   ) {
 
     if (
-      !candidateMap.has(
+      !uniqueMap.has(
         row.video_id
       )
     ) {
 
-      candidateMap.set(
+      uniqueMap.set(
         row.video_id,
         row
       );
@@ -2018,25 +2041,23 @@ async function scanYouTubeOnce() {
   }
 
   const candidates =
-    [...candidateMap.values()];
+    [...uniqueMap.values()];
 
-
-  // 3) 기존 영상 ID를 한꺼번에 조회
   const existingIds =
     new Set();
 
-  const videoIdChunks =
+  const idBatches =
     chunkArray(
       candidates.map(
         row =>
           row.video_id
       ),
-      YOUTUBE_DB_CHUNK_SIZE
+      200
     );
 
   for (
     const ids
-    of videoIdChunks
+    of idBatches
   ) {
 
     if (
@@ -2047,7 +2068,9 @@ async function scanYouTubeOnce() {
     }
 
     const {
-      data: existingRows,
+      data:
+        existingRows,
+
       error:
         existingError
     } =
@@ -2081,8 +2104,6 @@ async function scanYouTubeOnce() {
     }
   }
 
-
-  // 4) 신규 영상만 추출
   const newRows =
     candidates.filter(
       row =>
@@ -2091,22 +2112,9 @@ async function scanYouTubeOnce() {
         )
     );
 
-  const skipped =
-    candidates.length -
-    newRows.length;
-
-  const newVideos =
-    newRows.filter(
-      row =>
-        row.state ===
-        "NEW"
-    ).length;
-
-
-  // 5) 신규 영상 일괄 저장
   let inserted = 0;
 
-  const insertChunks =
+  const insertBatches =
     chunkArray(
       newRows,
       100
@@ -2114,7 +2122,7 @@ async function scanYouTubeOnce() {
 
   for (
     const rows
-    of insertChunks
+    of insertBatches
   ) {
 
     if (
@@ -2127,6 +2135,7 @@ async function scanYouTubeOnce() {
     const {
       data:
         insertedRows,
+
       error:
         insertError
     } =
@@ -2161,72 +2170,196 @@ async function scanYouTubeOnce() {
       rows.length;
   }
 
-
   return {
 
-    ok: true,
+    ok:
+      true,
 
     channels:
       channelList.length,
 
-    candidates:
-      candidates.length,
-
     inserted,
 
-    newVideos,
-
-    skipped,
+    skipped:
+      candidates.length -
+      newRows.length,
 
     failed,
 
     scanLimitPerChannel:
-      YOUTUBE_VIDEO_SCAN_LIMIT,
-
-    concurrency:
-      YOUTUBE_SCAN_CONCURRENCY
+      YOUTUBE_VIDEO_SCAN_LIMIT
   };
 }
 
-
 // ======================================================
-// ROUTES
+// HOME
 // ======================================================
 
 app.get(
-  "/health",
+  "/",
   (req, res) => {
 
-    res.json({
-      ok: true,
-      service:
-        "suno-radar",
-      version:
-        "6.9.2"
-    });
+    res.sendFile(
+      __dirname +
+      "/index.html"
+    );
   }
 );
 
 
 // ======================================================
-// SUNO ROUTES
+// SUNO API
 // ======================================================
 
 app.get(
   "/friends",
-  async (req, res) => {
+  async (
+    req,
+    res
+  ) => {
+
+    const {
+      data,
+      error
+    } =
+      await supabase
+        .from("friends")
+        .select("*")
+        .order(
+          "id",
+          {
+            ascending:
+              true
+          }
+        );
+
+    if (
+      error
+    ) {
+
+      return res
+        .status(500)
+        .json(error);
+    }
+
+    res.json(data);
+  }
+);
+
+
+app.get(
+  "/friend-search",
+  async (
+    req,
+    res
+  ) => {
+
+    const keyword =
+      req.query.q ||
+      "";
+
+    const {
+      data,
+      error
+    } =
+      await supabase
+        .from("friends")
+        .select("*")
+        .ilike(
+          "friend_name",
+          `%${keyword}%`
+        )
+        .order(
+          "friend_name"
+        );
+
+    if (
+      error
+    ) {
+
+      return res
+        .status(500)
+        .json(error);
+    }
+
+    res.json(data);
+  }
+);
+
+
+app.get(
+  "/friend-youtube/:id",
+  async (
+    req,
+    res
+  ) => {
 
     try {
 
       const {
-        data,
+        data:
+          friend,
+
         error
       } =
         await supabase
-          .from(
-            "friends"
-          )
+          .from("friends")
           .select("*")
+          .eq(
+            "id",
+            req.params.id
+          )
+          .single();
+
+      if (
+        error
+      ) {
+
+        throw error;
+      }
+
+      res.json(
+        await getFriendYouTube(
+          friend
+        )
+      );
+
+    } catch (e) {
+
+      res
+        .status(500)
+        .json({
+          ok: false,
+          error:
+            e.message
+        });
+    }
+  }
+);
+
+
+app.get(
+  "/friends-youtube",
+  async (
+    req,
+    res
+  ) => {
+
+    try {
+
+      const {
+        data:
+          friends,
+
+        error
+      } =
+        await supabase
+          .from("friends")
+          .select("*")
+          .eq(
+            "active",
+            true
+          )
           .order(
             "id",
             {
@@ -2242,13 +2375,41 @@ app.get(
         throw error;
       }
 
-      res.json(
-        data || []
-      );
+      const results =
+        [];
+
+      for (
+        const friend
+        of friends
+      ) {
+
+        results.push(
+          await getFriendYouTube(
+            friend
+          )
+        );
+      }
+
+      res.json({
+
+        ok: true,
+
+        friends:
+          friends.length,
+
+        found:
+          results.filter(
+            r =>
+              r.youtube_url
+          ).length,
+
+        results
+      });
 
     } catch (e) {
 
-      res.status(500)
+      res
+        .status(500)
         .json({
           ok: false,
           error:
@@ -2261,26 +2422,326 @@ app.get(
 
 app.get(
   "/tracks",
-  async (req, res) => {
+  async (
+    req,
+    res
+  ) => {
+
+    let query =
+      supabase
+        .from("tracks")
+        .select("*")
+        .order(
+          "public_at",
+          {
+            ascending:
+              false,
+
+            nullsFirst:
+              false
+          }
+        )
+        .order(
+          "detected_at",
+          {
+            ascending:
+              false
+          }
+        );
+
+    if (
+      req.query.state
+    ) {
+
+      query =
+        query.eq(
+          "state",
+          req.query.state
+        );
+    }
+
+    const {
+      data,
+      error
+    } =
+      await query;
+
+    if (
+      error
+    ) {
+
+      return res
+        .status(500)
+        .json(error);
+    }
+
+    res.json(data);
+  }
+);
+
+
+app.get(
+  "/mark-read/:id",
+  async (
+    req,
+    res
+  ) => {
+
+    const {
+      data,
+      error
+    } =
+      await supabase
+        .from("tracks")
+        .update({
+
+          state:
+            "READ",
+
+          read_at:
+            new Date()
+              .toISOString()
+        })
+        .eq(
+          "id",
+          req.params.id
+        )
+        .select();
+
+    if (
+      error
+    ) {
+
+      return res
+        .status(500)
+        .json({
+          ok: false,
+          error:
+            error.message
+        });
+    }
+
+    res.json({
+      ok: true,
+      data
+    });
+  }
+);
+
+
+app.get(
+  "/add-friend",
+  async (
+    req,
+    res
+  ) => {
+
+    const {
+      friend_name,
+      profile_url,
+      group_name
+    } =
+      req.query;
+
+    if (
+      !friend_name ||
+      !profile_url
+    ) {
+
+      return res
+        .status(400)
+        .json({
+          ok: false,
+          error:
+            "friend_name/profile_url required"
+        });
+    }
+
+    const {
+      data,
+      error
+    } =
+      await supabase
+        .from("friends")
+        .insert({
+
+          friend_name,
+
+          profile_url,
+
+          group_name:
+            group_name ||
+            "한국",
+
+          active:
+            true
+        })
+        .select();
+
+    if (
+      error
+    ) {
+
+      return res
+        .status(500)
+        .json({
+          ok: false,
+          error:
+            error.message
+        });
+    }
+
+    res.json({
+      ok: true,
+      friend:
+        data
+    });
+  }
+);
+
+
+app.get(
+  "/delete-friend/:id",
+  async (
+    req,
+    res
+  ) => {
+
+    const {
+      data,
+      error
+    } =
+      await supabase
+        .from("friends")
+        .delete()
+        .eq(
+          "id",
+          req.params.id
+        )
+        .select();
+
+    if (
+      error
+    ) {
+
+      return res
+        .status(500)
+        .json({
+          ok: false,
+          error:
+            error.message
+        });
+    }
+
+    res.json({
+      ok: true,
+      deleted:
+        data
+    });
+  }
+);
+
+
+app.get(
+  "/toggle-friend/:id",
+  async (
+    req,
+    res
+  ) => {
+
+    const {
+      data:
+        current,
+
+      error:
+        readError
+    } =
+      await supabase
+        .from("friends")
+        .select(
+          "active"
+        )
+        .eq(
+          "id",
+          req.params.id
+        )
+        .single();
+
+    if (
+      readError
+    ) {
+
+      return res
+        .status(500)
+        .json({
+          ok: false,
+          error:
+            readError.message
+        });
+    }
+
+    const {
+      data,
+      error
+    } =
+      await supabase
+        .from("friends")
+        .update({
+
+          active:
+            !current.active
+        })
+        .eq(
+          "id",
+          req.params.id
+        )
+        .select();
+
+    if (
+      error
+    ) {
+
+      return res
+        .status(500)
+        .json({
+          ok: false,
+          error:
+            error.message
+        });
+    }
+
+    res.json({
+      ok: true,
+      friend:
+        data
+    });
+  }
+);
+
+
+app.get(
+  "/scan-friend/:id",
+  async (
+    req,
+    res
+  ) => {
 
     try {
 
       const {
-        data,
+        data:
+          friend,
+
         error
       } =
         await supabase
-          .from(
-            "tracks"
-          )
+          .from("friends")
           .select("*")
-          .order(
-            "detected_at",
-            {
-              ascending:
-                false
-            }
-          );
+          .eq(
+            "id",
+            req.params.id
+          )
+          .single();
 
       if (
         error
@@ -2289,287 +2750,229 @@ app.get(
         throw error;
       }
 
-      res.json(
-        data || []
-      );
+      res.json({
+
+        ok: true,
+
+        result:
+          await scanFriend(
+            friend
+          )
+      });
 
     } catch (e) {
 
-      res.status(500)
+      res
+        .status(500)
         .json({
           ok: false,
           error:
             e.message
         });
     }
+  }
+);
+
+
+app.get(
+  "/stats",
+  async (
+    req,
+    res
+  ) => {
+
+    const [
+      {
+        count:
+          newCount
+      },
+
+      {
+        count:
+          readCount
+      },
+
+      {
+        count:
+          archiveCount
+      },
+
+      {
+        count:
+          friendCount
+      }
+    ] =
+      await Promise.all([
+
+        supabase
+          .from("tracks")
+          .select(
+            "*",
+            {
+              count:
+                "exact",
+
+              head:
+                true
+            }
+          )
+          .eq(
+            "state",
+            "NEW"
+          ),
+
+        supabase
+          .from("tracks")
+          .select(
+            "*",
+            {
+              count:
+                "exact",
+
+              head:
+                true
+            }
+          )
+          .eq(
+            "state",
+            "READ"
+          ),
+
+        supabase
+          .from("tracks")
+          .select(
+            "*",
+            {
+              count:
+                "exact",
+
+              head:
+                true
+            }
+          )
+          .eq(
+            "state",
+            "ARCHIVED"
+          ),
+
+        supabase
+          .from("friends")
+          .select(
+            "*",
+            {
+              count:
+                "exact",
+
+              head:
+                true
+            }
+          )
+          .eq(
+            "active",
+            true
+          )
+      ]);
+
+    res.json({
+
+      new:
+        newCount ||
+        0,
+
+      read:
+        readCount ||
+        0,
+
+      archived:
+        archiveCount ||
+        0,
+
+      friends:
+        friendCount ||
+        0
+    });
+  }
+);
+
+
+app.get(
+  "/latest",
+  async (
+    req,
+    res
+  ) => {
+
+    const {
+      data,
+      error
+    } =
+      await supabase
+        .from("tracks")
+        .select("*")
+        .order(
+          "public_at",
+          {
+            ascending:
+              false,
+
+            nullsFirst:
+              false
+          }
+        )
+        .order(
+          "detected_at",
+          {
+            ascending:
+              false
+          }
+        )
+        .limit(20);
+
+    if (
+      error
+    ) {
+
+      return res
+        .status(500)
+        .json(error);
+    }
+
+    res.json(data);
+  }
+);
+
+
+app.get(
+  "/cleanup",
+  async (
+    req,
+    res
+  ) => {
+
+    res.json(
+      await cleanupTracks()
+    );
   }
 );
 
 
 app.get(
   "/scan",
-  async (req, res) => {
+  async (
+    req,
+    res
+  ) => {
 
     try {
-
-      const result =
-        await scanOnce();
 
       res.json(
-        result
+        await scanOnce()
       );
 
     } catch (e) {
 
-      console.error(
-        "scan route error:",
-        e
-      );
-
-      res.status(500)
-        .json({
-          ok: false,
-          error:
-            e.message
-        });
-    }
-  }
-);
-
-
-app.post(
-  "/tracks/:id/read",
-  async (req, res) => {
-
-    try {
-
-      const {
-        error
-      } =
-        await supabase
-          .from(
-            "tracks"
-          )
-          .update({
-            state:
-              "READ",
-
-            read_at:
-              new Date()
-                .toISOString()
-          })
-          .eq(
-            "id",
-            req.params.id
-          );
-
-      if (
-        error
-      ) {
-
-        throw error;
-      }
-
-      res.json({
-        ok: true
-      });
-
-    } catch (e) {
-
-      res.status(500)
-        .json({
-          ok: false,
-          error:
-            e.message
-        });
-    }
-  }
-);
-
-
-app.post(
-  "/tracks/:id/archive",
-  async (req, res) => {
-
-    try {
-
-      const {
-        error
-      } =
-        await supabase
-          .from(
-            "tracks"
-          )
-          .update({
-            state:
-              "ARCHIVED",
-
-            archived_at:
-              new Date()
-                .toISOString()
-          })
-          .eq(
-            "id",
-            req.params.id
-          );
-
-      if (
-        error
-      ) {
-
-        throw error;
-      }
-
-      res.json({
-        ok: true
-      });
-
-    } catch (e) {
-
-      res.status(500)
-        .json({
-          ok: false,
-          error:
-            e.message
-        });
-    }
-  }
-);
-
-
-app.post(
-  "/tracks/:id/new",
-  async (req, res) => {
-
-    try {
-
-      const {
-        error
-      } =
-        await supabase
-          .from(
-            "tracks"
-          )
-          .update({
-            state:
-              "NEW",
-
-            read_at:
-              null,
-
-            archived_at:
-              null
-          })
-          .eq(
-            "id",
-            req.params.id
-          );
-
-      if (
-        error
-      ) {
-
-        throw error;
-      }
-
-      res.json({
-        ok: true
-      });
-
-    } catch (e) {
-
-      res.status(500)
-        .json({
-          ok: false,
-          error:
-            e.message
-        });
-    }
-  }
-);
-
-
-app.post(
-  "/friends/:id/toggle",
-  async (req, res) => {
-
-    try {
-
-      const id =
-        Number(
-          req.params.id
-        );
-
-      const {
-        data: friend,
-        error:
-          getError
-      } =
-        await supabase
-          .from(
-            "friends"
-          )
-          .select(
-            "id,active"
-          )
-          .eq(
-            "id",
-            id
-          )
-          .maybeSingle();
-
-      if (
-        getError
-      ) {
-
-        throw getError;
-      }
-
-      if (
-        !friend
-      ) {
-
-        return res
-          .status(404)
-          .json({
-            ok: false,
-            error:
-              "friend_not_found"
-          });
-      }
-
-      const {
-        error
-      } =
-        await supabase
-          .from(
-            "friends"
-          )
-          .update({
-            active:
-              !friend.active
-          })
-          .eq(
-            "id",
-            id
-          );
-
-      if (
-        error
-      ) {
-
-        throw error;
-      }
-
-      res.json({
-        ok: true,
-        active:
-          !friend.active
-      });
-
-    } catch (e) {
-
-      res.status(500)
+      res
+        .status(500)
         .json({
           ok: false,
           error:
@@ -2581,84 +2984,15 @@ app.post(
 
 
 // ======================================================
-// SUNO 친구 YouTube 링크
+// YouTube OAuth API
 // ======================================================
 
 app.get(
-  "/friends/:id/youtube",
-  async (req, res) => {
-
-    try {
-
-      const id =
-        Number(
-          req.params.id
-        );
-
-      const {
-        data: friend,
-        error
-      } =
-        await supabase
-          .from(
-            "friends"
-          )
-          .select("*")
-          .eq(
-            "id",
-            id
-          )
-          .maybeSingle();
-
-      if (
-        error
-      ) {
-
-        throw error;
-      }
-
-      if (
-        !friend
-      ) {
-
-        return res
-          .status(404)
-          .json({
-            ok: false,
-            error:
-              "friend_not_found"
-          });
-      }
-
-      const result =
-        await getFriendYouTube(
-          friend
-        );
-
-      res.json(
-        result
-      );
-
-    } catch (e) {
-
-      res.status(500)
-        .json({
-          ok: false,
-          error:
-            e.message
-        });
-    }
-  }
-);
-
-
-// ======================================================
-// YouTube OAuth 상태
-// ======================================================
-
-app.get(
-  "/youtube/status",
-  async (req, res) => {
+  "/youtube/auth/status",
+  async (
+    req,
+    res
+  ) => {
 
     try {
 
@@ -2674,14 +3008,18 @@ app.get(
 
         connected:
           Boolean(
-            auth
-              ?.refresh_token
-          )
+            auth &&
+            auth.refresh_token
+          ),
+
+        redirect_uri:
+          GOOGLE_REDIRECT_URI
       });
 
     } catch (e) {
 
-      res.status(500)
+      res
+        .status(500)
         .json({
           ok: false,
           error:
@@ -2692,13 +3030,12 @@ app.get(
 );
 
 
-// ======================================================
-// YouTube OAuth 연결
-// ======================================================
-
 app.get(
   "/auth/youtube",
-  (req, res) => {
+  (
+    req,
+    res
+  ) => {
 
     if (
       !youtubeConfigured()
@@ -2732,11 +3069,11 @@ app.get(
         access_type:
           "offline",
 
-        prompt:
-          "consent",
-
         include_granted_scopes:
           "true",
+
+        prompt:
+          "consent",
 
         state
       });
@@ -2751,7 +3088,10 @@ app.get(
 
 app.get(
   "/auth/youtube/callback",
-  async (req, res) => {
+  async (
+    req,
+    res
+  ) => {
 
     try {
 
@@ -2766,29 +3106,25 @@ app.get(
         error
       ) {
 
-        throw new Error(
-          String(error)
-        );
+        return res
+          .status(400)
+          .send(
+            `YouTube OAuth error: ${error}`
+          );
       }
 
       if (
-        !code
-      ) {
-
-        throw new Error(
-          "OAuth code not found"
-        );
-      }
-
-      if (
+        !code ||
         !consumeOauthState(
           state
         )
       ) {
 
-        throw new Error(
-          "Invalid OAuth state"
-        );
+        return res
+          .status(400)
+          .send(
+            "OAuth state가 잘못되었거나 만료되었습니다."
+          );
       }
 
       const tokenData =
@@ -2800,26 +3136,34 @@ app.get(
         tokenData
       );
 
+      await syncYouTubeSubscriptions();
+
       res.redirect(
         "/?youtube=connected"
       );
 
     } catch (e) {
 
-      console.error(
-        "youtube callback error:",
+      console.log(
+        "YouTube OAuth callback fail:",
         e.response
           ?.data ||
         e.message
       );
 
-      res.status(500)
+      res
+        .status(500)
         .send(
           "YouTube 연결 실패: " +
           (
             e.response
               ?.data
               ?.error_description ||
+
+            e.response
+              ?.data
+              ?.error ||
+
             e.message
           )
         );
@@ -2828,13 +3172,12 @@ app.get(
 );
 
 
-// ======================================================
-// YouTube 연결 해제
-// ======================================================
-
-app.post(
-  "/youtube/disconnect",
-  async (req, res) => {
+app.get(
+  "/youtube/logout",
+  async (
+    req,
+    res
+  ) => {
 
     try {
 
@@ -2848,7 +3191,7 @@ app.post(
           .delete()
           .neq(
             "id",
-            -1
+            0
           );
 
       if (
@@ -2864,7 +3207,8 @@ app.post(
 
     } catch (e) {
 
-      res.status(500)
+      res
+        .status(500)
         .json({
           ok: false,
           error:
@@ -2876,42 +3220,36 @@ app.post(
 
 
 // ======================================================
-// 구독채널 동기화
+// YouTube 구독 동기화
 // ======================================================
 
 app.get(
   "/youtube/subscriptions/sync",
-  async (req, res) => {
+  async (
+    req,
+    res
+  ) => {
 
     try {
 
-      const result =
-        await syncYouTubeSubscriptions();
-
       res.json(
-        result
+        await syncYouTubeSubscriptions()
       );
 
     } catch (e) {
 
-      console.error(
-        "youtube subscription sync error:",
-        e.response
-          ?.data ||
-        e.message
-      );
-
-      res.status(500)
+      res
+        .status(500)
         .json({
+
           ok: false,
+
           error:
             e.response
               ?.data
               ?.error
               ?.message ||
-            e.response
-              ?.data
-              ?.error_description ||
+
             e.message
         });
     }
@@ -2920,75 +3258,84 @@ app.get(
 
 
 // ======================================================
-// YouTube 채널 목록
+// V6.9 구독채널 관리
 // ======================================================
 
 app.get(
   "/youtube/channels",
-  async (req, res) => {
+  async (
+    req,
+    res
+  ) => {
 
-    try {
+    let query =
+      supabase
+        .from(
+          "youtube_channels"
+        )
+        .select("*")
+        .order(
+          "channel_title",
+          {
+            ascending:
+              true
+          }
+        );
 
-      const {
-        data,
-        error
-      } =
-        await supabase
-          .from(
-            "youtube_channels"
-          )
-          .select("*")
-          .order(
-            "channel_title",
-            {
-              ascending:
-                true
-            }
-          );
+    if (
+      req.query.active ===
+      "true"
+    ) {
 
-      if (
-        error
-      ) {
+      query =
+        query.eq(
+          "active",
+          true
+        );
+    }
 
-        throw error;
-      }
+    const {
+      data,
+      error
+    } =
+      await query;
 
-      res.json(
-        data || []
-      );
+    if (
+      error
+    ) {
 
-    } catch (e) {
-
-      res.status(500)
+      return res
+        .status(500)
         .json({
           ok: false,
           error:
-            e.message
+            error.message
         });
     }
+
+    res.json(
+      data ||
+      []
+    );
   }
 );
 
 
-// ======================================================
-// YouTube 채널 ON/OFF
-// ======================================================
-
 app.post(
   "/youtube/channels/:id/toggle",
-  async (req, res) => {
+  async (
+    req,
+    res
+  ) => {
 
     try {
 
-      const id =
-        Number(
-          req.params.id
-        );
-
       const {
-        data: channel,
+        data:
+          current,
+
         error:
-          getError
+          readError
       } =
         await supabase
           .from(
@@ -2999,31 +3346,19 @@ app.post(
           )
           .eq(
             "id",
-            id
+            req.params.id
           )
-          .maybeSingle();
+          .single();
 
       if (
-        getError
+        readError
       ) {
 
-        throw getError;
-      }
-
-      if (
-        !channel
-      ) {
-
-        return res
-          .status(404)
-          .json({
-            ok: false,
-            error:
-              "youtube_channel_not_found"
-          });
+        throw readError;
       }
 
       const {
+        data,
         error
       } =
         await supabase
@@ -3031,8 +3366,9 @@ app.post(
             "youtube_channels"
           )
           .update({
+
             active:
-              !channel.active,
+              !current.active,
 
             updated_at:
               new Date()
@@ -3040,8 +3376,10 @@ app.post(
           })
           .eq(
             "id",
-            id
-          );
+            req.params.id
+          )
+          .select()
+          .single();
 
       if (
         error
@@ -3051,14 +3389,17 @@ app.post(
       }
 
       res.json({
+
         ok: true,
-        active:
-          !channel.active
+
+        channel:
+          data
       });
 
     } catch (e) {
 
-      res.status(500)
+      res
+        .status(500)
         .json({
           ok: false,
           error:
@@ -3069,59 +3410,29 @@ app.post(
 );
 
 
-// ======================================================
-// YouTube 수집
-// ======================================================
-
-app.get(
-  "/youtube/scan",
-  async (req, res) => {
-
-    try {
-
-      const result =
-        await scanYouTubeOnce();
-
-      res.json(
-        result
-      );
-
-    } catch (e) {
-
-      console.error(
-        "youtube scan route error:",
-        e.response
-          ?.data ||
-        e.message
-      );
-
-      res.status(500)
-        .json({
-          ok: false,
-          error:
-            e.response
-              ?.data
-              ?.error
-              ?.message ||
-            e.response
-              ?.data
-              ?.error_description ||
-            e.message
-        });
-    }
-  }
-);
-
-
-// ======================================================
-// YouTube 영상 목록
-// ======================================================
-
-app.get(
-  "/youtube/videos",
-  async (req, res) => {
+app.post(
+  "/youtube/channels/set-all",
+  async (
+    req,
+    res
+  ) => {
 
     try {
+
+      if (
+        typeof req.body
+          ?.active !==
+        "boolean"
+      ) {
+
+        return res
+          .status(400)
+          .json({
+            ok: false,
+            error:
+              "active boolean required"
+          });
+      }
 
       const {
         data,
@@ -3129,247 +3440,21 @@ app.get(
       } =
         await supabase
           .from(
-            "youtube_videos"
-          )
-          .select("*")
-          .order(
-            "published_at",
-            {
-              ascending:
-                false
-            }
-          );
-
-      if (
-        error
-      ) {
-
-        throw error;
-      }
-
-      res.json(
-        data || []
-      );
-
-    } catch (e) {
-
-      res.status(500)
-        .json({
-          ok: false,
-          error:
-            e.message
-        });
-    }
-  }
-);
-
-// ======================================================
-// YouTube 영상 상태 변경
-// ======================================================
-
-app.post(
-  "/youtube/videos/:id/read",
-  async (req, res) => {
-
-    try {
-
-      const id =
-        Number(
-          req.params.id
-        );
-
-      const {
-        error
-      } =
-        await supabase
-          .from(
-            "youtube_videos"
+            "youtube_channels"
           )
           .update({
-            state:
-              "READ",
 
-            read_at:
-              new Date()
-                .toISOString(),
+            active:
+              req.body.active,
 
-            archived_at:
-              null
-          })
-          .eq(
-            "id",
-            id
-          );
-
-      if (
-        error
-      ) {
-
-        throw error;
-      }
-
-      res.json({
-        ok: true
-      });
-
-    } catch (e) {
-
-      res.status(500)
-        .json({
-          ok: false,
-          error:
-            e.message
-        });
-    }
-  }
-);
-
-
-app.post(
-  "/youtube/videos/:id/archive",
-  async (req, res) => {
-
-    try {
-
-      const id =
-        Number(
-          req.params.id
-        );
-
-      const {
-        error
-      } =
-        await supabase
-          .from(
-            "youtube_videos"
-          )
-          .update({
-            state:
-              "ARCHIVED",
-
-            archived_at:
+            updated_at:
               new Date()
                 .toISOString()
           })
-          .eq(
+          .not(
             "id",
-            id
-          );
-
-      if (
-        error
-      ) {
-
-        throw error;
-      }
-
-      res.json({
-        ok: true
-      });
-
-    } catch (e) {
-
-      res.status(500)
-        .json({
-          ok: false,
-          error:
-            e.message
-        });
-    }
-  }
-);
-
-
-app.post(
-  "/youtube/videos/:id/new",
-  async (req, res) => {
-
-    try {
-
-      const id =
-        Number(
-          req.params.id
-        );
-
-      const {
-        error
-      } =
-        await supabase
-          .from(
-            "youtube_videos"
-          )
-          .update({
-            state:
-              "NEW",
-
-            read_at:
-              null,
-
-            archived_at:
-              null
-          })
-          .eq(
-            "id",
-            id
-          );
-
-      if (
-        error
-      ) {
-
-        throw error;
-      }
-
-      res.json({
-        ok: true
-      });
-
-    } catch (e) {
-
-      res.status(500)
-        .json({
-          ok: false,
-          error:
-            e.message
-        });
-    }
-  }
-);
-
-
-// ======================================================
-// YouTube 전체 확인
-// 현재 NEW 영상을 READ 처리
-// ======================================================
-
-app.post(
-  "/youtube/videos/read-all",
-  async (req, res) => {
-
-    try {
-
-      const now =
-        new Date()
-          .toISOString();
-
-      const {
-        data,
-        error
-      } =
-        await supabase
-          .from(
-            "youtube_videos"
-          )
-          .update({
-            state:
-              "READ",
-
-            read_at:
-              now
-          })
-          .eq(
-            "state",
-            "NEW"
+            "is",
+            null
           )
           .select(
             "id"
@@ -3383,16 +3468,23 @@ app.post(
       }
 
       res.json({
+
         ok: true,
+
+        active:
+          req.body.active,
+
         updated:
-          data
-            ?.length ||
-          0
+          (
+            data ||
+            []
+          ).length
       });
 
     } catch (e) {
 
-      res.status(500)
+      res
+        .status(500)
         .json({
           ok: false,
           error:
@@ -3404,66 +3496,277 @@ app.post(
 
 
 // ======================================================
-// YouTube 정리 실행
+// YouTube 영상 API
 // ======================================================
 
 app.get(
-  "/youtube/cleanup",
-  async (req, res) => {
+  "/youtube/videos",
+  async (
+    req,
+    res
+  ) => {
+
+    let query =
+      supabase
+        .from(
+          "youtube_videos"
+        )
+        .select("*")
+        .order(
+          "published_at",
+          {
+            ascending:
+              false,
+
+            nullsFirst:
+              false
+          }
+        )
+        .order(
+          "detected_at",
+          {
+            ascending:
+              false
+          }
+        );
+
+    if (
+      req.query.state
+    ) {
+
+      query =
+        query.eq(
+          "state",
+          req.query.state
+        );
+    }
+
+    const {
+      data,
+      error
+    } =
+      await query;
+
+    if (
+      error
+    ) {
+
+      return res
+        .status(500)
+        .json({
+          ok: false,
+          error:
+            error.message
+        });
+    }
+
+    res.json(
+      data ||
+      []
+    );
+  }
+);
+
+
+app.get(
+  "/youtube/mark-read/:id",
+  async (
+    req,
+    res
+  ) => {
+
+    const {
+      data,
+      error
+    } =
+      await supabase
+        .from(
+          "youtube_videos"
+        )
+        .update({
+
+          state:
+            "READ",
+
+          read_at:
+            new Date()
+              .toISOString()
+        })
+        .eq(
+          "id",
+          req.params.id
+        )
+        .select();
+
+    if (
+      error
+    ) {
+
+      return res
+        .status(500)
+        .json({
+          ok: false,
+          error:
+            error.message
+        });
+    }
+
+    res.json({
+      ok: true,
+      data
+    });
+  }
+);
+
+
+app.get(
+  "/youtube/stats",
+  async (
+    req,
+    res
+  ) => {
+
+    const [
+      {
+        count:
+          channelCount
+      },
+
+      {
+        count:
+          newCount
+      },
+
+      {
+        count:
+          readCount
+      },
+
+      {
+        count:
+          archivedCount
+      }
+    ] =
+      await Promise.all([
+
+        supabase
+          .from(
+            "youtube_channels"
+          )
+          .select(
+            "*",
+            {
+              count:
+                "exact",
+
+              head:
+                true
+            }
+          )
+          .eq(
+            "active",
+            true
+          ),
+
+        supabase
+          .from(
+            "youtube_videos"
+          )
+          .select(
+            "*",
+            {
+              count:
+                "exact",
+
+              head:
+                true
+            }
+          )
+          .eq(
+            "state",
+            "NEW"
+          ),
+
+        supabase
+          .from(
+            "youtube_videos"
+          )
+          .select(
+            "*",
+            {
+              count:
+                "exact",
+
+              head:
+                true
+            }
+          )
+          .eq(
+            "state",
+            "READ"
+          ),
+
+        supabase
+          .from(
+            "youtube_videos"
+          )
+          .select(
+            "*",
+            {
+              count:
+                "exact",
+
+              head:
+                true
+            }
+          )
+          .eq(
+            "state",
+            "ARCHIVED"
+          )
+      ]);
+
+    res.json({
+
+      channels:
+        channelCount ||
+        0,
+
+      new:
+        newCount ||
+        0,
+
+      read:
+        readCount ||
+        0,
+
+      archived:
+        archivedCount ||
+        0
+    });
+  }
+);
+
+
+app.get(
+  "/youtube/scan",
+  async (
+    req,
+    res
+  ) => {
 
     try {
-
-      const result =
-        await cleanupYouTubeVideos();
 
       res.json(
-        result
+        await scanYouTubeOnce()
       );
 
     } catch (e) {
 
-      res.status(500)
+      res
+        .status(500)
         .json({
-          ok: false,
-          error:
-            e.message
-        });
-    }
-  }
-);
 
-
-// ======================================================
-// YouTube 최근수집
-// 빠른 수집용
-// ======================================================
-
-app.get(
-  "/youtube/recent-scan",
-  async (req, res) => {
-
-    try {
-
-      const result =
-        await scanYouTubeOnce();
-
-      res.json({
-        ...result,
-        mode:
-          "recent-fast"
-      });
-
-    } catch (e) {
-
-      console.error(
-        "youtube recent scan error:",
-        e.response
-          ?.data ||
-        e.message
-      );
-
-      res.status(500)
-        .json({
           ok: false,
 
           error:
@@ -3471,9 +3774,34 @@ app.get(
               ?.data
               ?.error
               ?.message ||
-            e.response
-              ?.data
-              ?.error_description ||
+
+            e.message
+        });
+    }
+  }
+);
+
+
+app.get(
+  "/youtube/cleanup",
+  async (
+    req,
+    res
+  ) => {
+
+    try {
+
+      res.json(
+        await cleanupYouTubeVideos()
+      );
+
+    } catch (e) {
+
+      res
+        .status(500)
+        .json({
+          ok: false,
+          error:
             e.message
         });
     }
@@ -3482,98 +3810,25 @@ app.get(
 
 
 // ======================================================
-// 404 API
-// ======================================================
-
-app.use(
-  (req, res, next) => {
-
-    if (
-      req.path.startsWith(
-        "/youtube/"
-      ) ||
-      req.path.startsWith(
-        "/auth/"
-      )
-    ) {
-
-      return res
-        .status(404)
-        .json({
-          ok: false,
-          error:
-            "route_not_found",
-          path:
-            req.path
-        });
-    }
-
-    next();
-  }
-);
-
-
-// ======================================================
-// 서버 오류 처리
-// ======================================================
-
-app.use(
-  (
-    err,
-    req,
-    res,
-    next
-  ) => {
-
-    console.error(
-      "SERVER ERROR:",
-      err
-    );
-
-    if (
-      res.headersSent
-    ) {
-
-      return next(
-        err
-      );
-    }
-
-    res.status(500)
-      .json({
-        ok: false,
-        error:
-          err.message ||
-          "server_error"
-      });
-  }
-);
-
-
-// ======================================================
-// CRON
+// 자동수집
 // ======================================================
 
 cron.schedule(
-  "*/30 * * * *",
+  "*/10 * * * *",
   async () => {
 
     try {
 
       console.log(
-        "[CRON] SUNO scan start"
+        "auto suno scan start"
       );
 
       await scanOnce();
 
-      console.log(
-        "[CRON] SUNO scan complete"
-      );
-
     } catch (e) {
 
-      console.error(
-        "[CRON] SUNO scan error:",
+      console.log(
+        "auto suno scan fail:",
         e.message
       );
     }
@@ -3582,7 +3837,7 @@ cron.schedule(
 
 
 cron.schedule(
-  "*/15 * * * *",
+  "7 * * * *",
   async () => {
 
     try {
@@ -3599,23 +3854,59 @@ cron.schedule(
       }
 
       console.log(
-        "[CRON] YouTube fast scan start"
+        "auto youtube scan start"
       );
 
-      const result =
-        await scanYouTubeOnce();
-
-      console.log(
-        "[CRON] YouTube fast scan complete:",
-        result
-      );
+      await scanYouTubeOnce();
 
     } catch (e) {
 
-      console.error(
-        "[CRON] YouTube scan error:",
+      console.log(
+        "auto youtube scan fail:",
         e.response
-          ?.data ||
+          ?.data
+          ?.error
+          ?.message ||
+
+        e.message
+      );
+    }
+  }
+);
+
+
+cron.schedule(
+  "17 */12 * * *",
+  async () => {
+
+    try {
+
+      const auth =
+        await getStoredYouTubeAuth();
+
+      if (
+        !auth
+          ?.refresh_token
+      ) {
+
+        return;
+      }
+
+      console.log(
+        "auto youtube subscription sync start"
+      );
+
+      await syncYouTubeSubscriptions();
+
+    } catch (e) {
+
+      console.log(
+        "auto youtube subscription sync fail:",
+        e.response
+          ?.data
+          ?.error
+          ?.message ||
+
         e.message
       );
     }
@@ -3624,27 +3915,24 @@ cron.schedule(
 
 
 // ======================================================
-// START SERVER
+// SERVER
 // ======================================================
 
 const PORT =
   process.env.PORT ||
   3000;
 
+
 app.listen(
   PORT,
   () => {
 
     console.log(
-      `SUNO Radar V6.9.2 running on port ${PORT}`
+      `SUNO Radar V6.9.2 Server running on ${PORT}`
     );
 
     console.log(
-      `YouTube scan concurrency: ${YOUTUBE_SCAN_CONCURRENCY}`
-    );
-
-    console.log(
-      `YouTube videos/channel: ${YOUTUBE_VIDEO_SCAN_LIMIT}`
+      `YouTube OAuth redirect: ${GOOGLE_REDIRECT_URI}`
     );
   }
 );
