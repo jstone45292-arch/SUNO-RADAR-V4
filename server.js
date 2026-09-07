@@ -1427,15 +1427,28 @@ async function fetchYouTubeChannelDetails(
 
 async function syncYouTubeSubscriptions() {
 
-  const subscriptions =
-    await fetchAllYouTubeSubscriptions();
+const subscriptions =
+  await fetchAllYouTubeSubscriptions();
 
-  const channelIds =
-    subscriptions.map(
-      x =>
-        x.channel_id
-    );
+// 같은 channel_id가 여러 번 들어오는 경우 1개만 남김
+const uniqueSubscriptions =
+  [
+    ...new Map(
+      subscriptions.map(
+        item => [
+          item.channel_id,
+          item
+        ]
+      )
+    ).values()
+  ];
 
+const channelIds =
+  uniqueSubscriptions.map(
+    x =>
+      x.channel_id
+  );
+  
   const detailMap =
     await fetchYouTubeChannelDetails(
       channelIds
@@ -1477,7 +1490,7 @@ async function syncYouTubeSubscriptions() {
     );
 
   const rows =
-    subscriptions.map(
+  uniqueSubscriptions.map(
       sub => {
 
         const detail =
